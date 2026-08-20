@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import type { KLineInterval, KLineRange } from "@/lib/types/stock";
-import { stockDataProvider } from "@/services/providers/MockStockDataProvider";
+import { stockDataProvider } from "@/services/providers";
 import { StockNotFoundError } from "@/services/providers/StockDataProvider";
+import { FinMindRequestError } from "@/services/providers/finmind/client";
 
-// Always computed per-request — mock data is seeded by the current date.
+// Always computed per-request (live fetch and/or date-seeded mock data).
 export const dynamic = "force-dynamic";
 
 const VALID_INTERVALS: KLineInterval[] = ["D", "W", "M"];
@@ -31,6 +32,9 @@ export async function GET(
   } catch (err) {
     if (err instanceof StockNotFoundError) {
       return NextResponse.json({ error: err.message }, { status: 404 });
+    }
+    if (err instanceof FinMindRequestError) {
+      return NextResponse.json({ error: err.message }, { status: 502 });
     }
     throw err;
   }

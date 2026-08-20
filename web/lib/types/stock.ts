@@ -15,7 +15,8 @@ export interface StockQuote {
   prevClose: number;
   volume: number; // 張
   amount: number; // 成交金額（元）
-  updatedAt: string; // ISO timestamp
+  updatedAt: string; // ISO timestamp of when we fetched this
+  asOfDate: string; // trading date this OHLC data is from (YYYY-MM-DD)
   isMock: boolean;
 }
 

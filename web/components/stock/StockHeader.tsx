@@ -26,6 +26,9 @@ export function StockHeader({ quote }: { quote: StockQuote }) {
               {formatSigned(quote.change, 1)}（{formatPercent(quote.changePercent)}）
             </span>
           </div>
+          <div className="mt-0.5 text-xs text-muted-foreground">
+            資料日期：{quote.asOfDate}（最近交易日收盤，非即時報價）
+          </div>
         </div>
         <Button
           variant={watched ? "secondary" : "outline"}

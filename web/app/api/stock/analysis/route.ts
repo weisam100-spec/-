@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import type { StockAnalysisResponse } from "@/lib/types/stock";
-import { stockDataProvider } from "@/services/providers/MockStockDataProvider";
+import { stockDataProvider } from "@/services/providers";
 import { buildTechnicalIndicators, classifyTechnical } from "@/services/analysis/technicalIndicators";
 import { computeAIScore } from "@/services/analysis/aiScore";
 import { buildAIAnalysis, buildTechnicalAnalysis } from "@/services/analysis/aiNarrative";
 
-// Always computed per-request — mock data is seeded by the current date.
+// Always computed per-request (live fetch and/or date-seeded mock data).
 export const dynamic = "force-dynamic";
 
 async function analyzeOne(symbol: string): Promise<StockAnalysisResponse | null> {

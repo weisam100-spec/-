@@ -13,6 +13,7 @@ import type {
 } from "@/lib/types/stock";
 import { findKnownStock, searchKnownStocks } from "@/lib/constants/stocks";
 import { createSeededRandom, todaySeedSuffix } from "@/lib/utils/seededRandom";
+import { resampleMonthly, resampleWeekly } from "@/lib/utils/resampleBars";
 import { StockDataProvider, StockNotFoundError } from "./StockDataProvider";
 
 const RANGE_TRADING_DAYS: Record<KLineRange, number> = {
@@ -97,40 +98,6 @@ function getFullSeriesWithToday(symbol: string): OhlcvBar[] {
   return [...history, generateTodayBar(symbol, lastClose)];
 }
 
-function resampleWeekly(bars: OhlcvBar[]): OhlcvBar[] {
-  return resampleByBucket(bars, (d) => {
-    const date = new Date(d);
-    const day = date.getDay();
-    const monday = new Date(date);
-    monday.setDate(date.getDate() - ((day + 6) % 7));
-    return monday.toISOString().slice(0, 10);
-  });
-}
-
-function resampleMonthly(bars: OhlcvBar[]): OhlcvBar[] {
-  return resampleByBucket(bars, (d) => d.slice(0, 7)); // YYYY-MM
-}
-
-function resampleByBucket(
-  bars: OhlcvBar[],
-  bucketKey: (date: string) => string
-): OhlcvBar[] {
-  const buckets = new Map<string, OhlcvBar[]>();
-  for (const bar of bars) {
-    const key = bucketKey(bar.date);
-    if (!buckets.has(key)) buckets.set(key, []);
-    buckets.get(key)!.push(bar);
-  }
-  return Array.from(buckets.entries()).map(([key, group]) => ({
-    date: key,
-    open: group[0].open,
-    high: Math.max(...group.map((b) => b.high)),
-    low: Math.min(...group.map((b) => b.low)),
-    close: group[group.length - 1].close,
-    volume: group.reduce((sum, b) => sum + b.volume, 0),
-  }));
-}
-
 export class MockStockDataProvider implements StockDataProvider {
   async getStockQuote(symbolOrName: string): Promise<StockQuote> {
     const stock = requireKnownStock(symbolOrName);
@@ -152,6 +119,7 @@ export class MockStockDataProvider implements StockDataProvider {
       volume: today.volume,
       amount: Math.round(today.close * today.volume * 1000),
       updatedAt: new Date().toISOString(),
+      asOfDate: today.date,
       isMock: true,
     };
   }

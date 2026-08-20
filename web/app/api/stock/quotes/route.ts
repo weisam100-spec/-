@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import type { StockQuote } from "@/lib/types/stock";
-import { stockDataProvider } from "@/services/providers/MockStockDataProvider";
+import { stockDataProvider } from "@/services/providers";
 
-// Always computed per-request — mock data is seeded by the current date.
+// Always computed per-request (live fetch and/or date-seeded mock data).
 export const dynamic = "force-dynamic";
 
 /** Batch quote lookup, used by the watchlist to avoid one request per row. */

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { stockDataProvider } from "@/services/providers/MockStockDataProvider";
+import { stockDataProvider } from "@/services/providers";
 
-// Always computed per-request — mock data is seeded by the current date.
+// Always computed per-request (live fetch and/or date-seeded mock data).
 export const dynamic = "force-dynamic";
 
 export async function GET() {
