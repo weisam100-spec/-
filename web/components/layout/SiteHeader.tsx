@@ -18,6 +18,9 @@ export function SiteHeader() {
           <Link href="/watchlist" className="hover:text-foreground">
             自選股
           </Link>
+          <Link href="/portfolio" className="hover:text-foreground">
+            我的持股
+          </Link>
         </nav>
       </div>
       <div className="px-4 pb-3 sm:hidden">

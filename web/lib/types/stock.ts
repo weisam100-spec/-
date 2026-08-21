@@ -187,3 +187,34 @@ export interface WatchlistItem {
   name: string;
   addedAt: string;
 }
+
+export interface HoldingItem {
+  symbol: string;
+  name: string;
+  avgCost: number; // 平均成本（每股）
+  shares: number; // 持有股數
+  purchaseDate?: string; // YYYY-MM-DD，未填時以預設回溯區間估算報酬曲線
+  addedAt: string;
+}
+
+export interface HoldingMetrics {
+  symbol: string;
+  costBasis: number; // avgCost * shares
+  marketValue: number; // currentPrice * shares
+  unrealizedPL: number;
+  returnPercent: number;
+}
+
+export interface PortfolioSummary {
+  totalCost: number;
+  totalMarketValue: number;
+  totalUnrealizedPL: number;
+  totalReturnPercent: number;
+}
+
+export interface PortfolioReturnPoint {
+  date: string;
+  cost: number; // 累積已投入成本（依各持股買入日期分階段計入）
+  value: number; // 當日組合市值
+  returnPercent: number;
+}
