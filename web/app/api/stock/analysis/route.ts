@@ -10,14 +10,16 @@ export const dynamic = "force-dynamic";
 
 async function analyzeOne(symbol: string): Promise<StockAnalysisResponse | null> {
   try {
-    const [quote, bars, fundamentals, quarterlyEps, institutional, margin] = await Promise.all([
-      stockDataProvider.getStockQuote(symbol),
-      stockDataProvider.getStockHistory(symbol, "D", "5Y"),
-      stockDataProvider.getFundamentals(symbol),
-      stockDataProvider.getQuarterlyEps(symbol),
-      stockDataProvider.getInstitutionalTrading(symbol),
-      stockDataProvider.getMarginTrading(symbol),
-    ]);
+    const [quote, bars, fundamentals, quarterlyEps, institutional, margin, monthlyRevenue] =
+      await Promise.all([
+        stockDataProvider.getStockQuote(symbol),
+        stockDataProvider.getStockHistory(symbol, "D", "5Y"),
+        stockDataProvider.getFundamentals(symbol),
+        stockDataProvider.getQuarterlyEps(symbol),
+        stockDataProvider.getInstitutionalTrading(symbol),
+        stockDataProvider.getMarginTrading(symbol),
+        stockDataProvider.getMonthlyRevenue(symbol),
+      ]);
 
     const technical = buildTechnicalIndicators(bars);
     const classification = classifyTechnical(bars, technical);
@@ -41,7 +43,18 @@ async function analyzeOne(symbol: string): Promise<StockAnalysisResponse | null>
       riskWarnings
     );
 
-    return { quote, technical, technicalAnalysis, score, analysis, institutional };
+    return {
+      quote,
+      technical,
+      technicalAnalysis,
+      score,
+      analysis,
+      institutional,
+      fundamentals,
+      quarterlyEps,
+      monthlyRevenue,
+      margin,
+    };
   } catch {
     return null;
   }

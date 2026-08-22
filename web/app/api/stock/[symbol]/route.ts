@@ -19,14 +19,16 @@ export async function GET(
   try {
     // Fetch a long daily series so MA120/MA240 always have enough bars,
     // independent of whatever range the chart UI happens to be showing.
-    const [quote, bars, fundamentals, quarterlyEps, institutional, margin] = await Promise.all([
-      stockDataProvider.getStockQuote(symbol),
-      stockDataProvider.getStockHistory(symbol, "D", "5Y"),
-      stockDataProvider.getFundamentals(symbol),
-      stockDataProvider.getQuarterlyEps(symbol),
-      stockDataProvider.getInstitutionalTrading(symbol),
-      stockDataProvider.getMarginTrading(symbol),
-    ]);
+    const [quote, bars, fundamentals, quarterlyEps, institutional, margin, monthlyRevenue] =
+      await Promise.all([
+        stockDataProvider.getStockQuote(symbol),
+        stockDataProvider.getStockHistory(symbol, "D", "5Y"),
+        stockDataProvider.getFundamentals(symbol),
+        stockDataProvider.getQuarterlyEps(symbol),
+        stockDataProvider.getInstitutionalTrading(symbol),
+        stockDataProvider.getMarginTrading(symbol),
+        stockDataProvider.getMonthlyRevenue(symbol),
+      ]);
 
     const technical = buildTechnicalIndicators(bars);
     const classification = classifyTechnical(bars, technical);
@@ -59,6 +61,10 @@ export async function GET(
       score,
       analysis,
       institutional,
+      fundamentals,
+      quarterlyEps,
+      monthlyRevenue,
+      margin,
     };
     return NextResponse.json(response);
   } catch (err) {

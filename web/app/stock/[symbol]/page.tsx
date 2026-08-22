@@ -10,7 +10,8 @@ import { QuickIndicatorCards } from "@/components/stock/QuickIndicatorCards";
 import { TechnicalAnalysisPanel } from "@/components/stock/TechnicalAnalysisPanel";
 import { AIScoreCard } from "@/components/stock/AIScoreCard";
 import { AIAnalysisCard } from "@/components/stock/AIAnalysisCard";
-import { ComingSoonCard } from "@/components/common/ComingSoonCard";
+import { FundamentalPanel } from "@/components/stock/FundamentalPanel";
+import { ChipPanel } from "@/components/stock/ChipPanel";
 import { MockDataBanner } from "@/components/common/MockDataBanner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -74,11 +75,15 @@ export default function StockAnalysisPage({
             </TabsContent>
 
             <TabsContent value="fundamental">
-              <ComingSoonCard feature="基本面分析" />
+              <FundamentalPanel
+                fundamentals={data.fundamentals}
+                quarterlyEps={data.quarterlyEps}
+                monthlyRevenue={data.monthlyRevenue}
+              />
             </TabsContent>
 
             <TabsContent value="chip">
-              <ComingSoonCard feature="籌碼分析" />
+              <ChipPanel institutional={data.institutional} margin={data.margin} />
             </TabsContent>
 
             <TabsContent value="ai" className="flex flex-col gap-4">

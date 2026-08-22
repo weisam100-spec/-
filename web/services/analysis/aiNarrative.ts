@@ -3,6 +3,7 @@ import type {
   AIScoreBreakdown,
   FundamentalData,
   InstitutionalTrading,
+  MonthlyRevenue,
   OhlcvBar,
   TechnicalAnalysisResult,
   TechnicalIndicators,
@@ -110,6 +111,16 @@ function buildFundamentalSummary(fundamentals: FundamentalData, epsYoY: number |
       ? "基本面目前仍偏正向。"
       : "基本面呈現分歧或轉弱訊號，建議留意後續財報變化。";
   return `${epsText}，${revenueText}，${overall}`;
+}
+
+export function buildRevenueNarrative(latest: MonthlyRevenue | undefined): string {
+  if (!latest) return "尚無月營收資料。";
+  const yoyText =
+    latest.yoy > 0
+      ? `營收維持年增成長（${formatPercent(latest.yoy)}），企業營運動能仍偏正向。`
+      : `營收年增轉為負成長（${formatPercent(latest.yoy)}），營運動能轉弱，建議留意後續月份變化。`;
+  const momText = `月增率為 ${formatPercent(latest.mom)}。`;
+  return `${momText}${yoyText}`;
 }
 
 function buildChipSummary(institutional: InstitutionalTrading): string {

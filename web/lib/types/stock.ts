@@ -164,6 +164,10 @@ export interface StockAnalysisResponse {
   score: AIScoreBreakdown;
   analysis: AIAnalysisResult;
   institutional: InstitutionalTrading;
+  fundamentals: FundamentalData;
+  quarterlyEps: QuarterlyEps[];
+  monthlyRevenue: MonthlyRevenue[];
+  margin: MarginTrading;
 }
 
 export interface MarketOverview {

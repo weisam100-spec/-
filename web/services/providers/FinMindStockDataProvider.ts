@@ -30,6 +30,48 @@ interface FinMindStockPriceRow {
   Trading_turnover: number;
 }
 
+interface FinMindRevenueRow {
+  date: string;
+  stock_id: string;
+  country: string;
+  revenue: number;
+  revenue_month: number;
+  revenue_year: number;
+}
+
+interface FinMindInstitutionalRow {
+  date: string;
+  stock_id: string;
+  name: string; // e.g. "Foreign_Investor", "Foreign_Dealer_Self", "Investment_Trust", "Dealer_self", "Dealer_Hedging"
+  buy: number; // shares
+  sell: number; // shares
+}
+
+interface FinMindMarginRow {
+  date: string;
+  stock_id: string;
+  MarginPurchaseTodayBalance: number;
+  MarginPurchaseYesterdayBalance: number;
+  ShortSaleTodayBalance: number;
+  ShortSaleYesterdayBalance: number;
+}
+
+interface FinMindPerRow {
+  date: string;
+  stock_id: string;
+  PER: number;
+  PBR: number;
+  dividend_yield: number;
+}
+
+interface FinMindFinancialStatementRow {
+  date: string;
+  stock_id: string;
+  type: string; // e.g. "EPS", "Revenue", "GrossProfit", "OperatingIncome", "IncomeAfterTaxes"
+  value: number;
+  origin_name?: string;
+}
+
 const RANGE_CALENDAR_DAYS: Record<KLineRange, number> = {
   "1M": 45,
   "3M": 110,
@@ -90,6 +132,46 @@ async function fetchDailyBars(symbol: string, calendarDays: number): Promise<Fin
     start_date: toDateString(start),
     end_date: toDateString(end),
   });
+}
+
+function dateNDaysAgo(n: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  return toDateString(d);
+}
+
+function monthlyRevenueFromRows(rows: FinMindRevenueRow[]): MonthlyRevenue[] {
+  const sorted = [...rows].sort(
+    (a, b) => a.revenue_year - b.revenue_year || a.revenue_month - b.revenue_month
+  );
+  const byKey = new Map(sorted.map((r) => [`${r.revenue_year}-${r.revenue_month}`, r.revenue]));
+  const result: MonthlyRevenue[] = sorted.map((cur, i) => {
+    const monthKey = `${cur.revenue_year}-${String(cur.revenue_month).padStart(2, "0")}`;
+    const prevRevenue = i > 0 ? sorted[i - 1].revenue : undefined;
+    const mom = prevRevenue ? round2(((cur.revenue - prevRevenue) / prevRevenue) * 100) : 0;
+    const yoyMonth = cur.revenue_month;
+    const yoyYear = cur.revenue_year - 1;
+    const yoyRevenue = byKey.get(`${yoyYear}-${yoyMonth}`);
+    const yoy = yoyRevenue ? round2(((cur.revenue - yoyRevenue) / yoyRevenue) * 100) : 0;
+    return { month: monthKey, revenue: Math.round(cur.revenue), mom, yoy };
+  });
+  return result.slice(-24);
+}
+
+/** FinMind financial-statement rows are dated at quarter-end; map that to a "YYYY Qn" label. */
+function quarterLabelFromDate(dateStr: string): string {
+  const [yearStr, monthStr] = dateStr.split("-");
+  const year = Number(yearStr);
+  const month = Number(monthStr);
+  const quarter = Math.ceil(month / 3);
+  return `${year} Q${quarter}`;
+}
+
+function classifyInstitution(name: string): "foreign" | "trust" | "dealer" | null {
+  if (name.startsWith("Foreign")) return "foreign";
+  if (name.startsWith("Investment_Trust")) return "trust";
+  if (name.startsWith("Dealer")) return "dealer";
+  return null;
 }
 
 /**
@@ -172,31 +254,175 @@ export class FinMindStockDataProvider implements StockDataProvider {
     return searchKnownStocks(query);
   }
 
-  // --- Not yet wired to a real source; delegated to mock (Phase 2) ---
-  // Normalized (not fully resolved) since mock data never needs a real name
-  // and accepts any symbol string — see MockStockDataProvider.
-
+  // Homepage market overview (index/advancers/decliners) isn't wired to a
+  // real source yet — aggregating that across the whole market is a bigger
+  // job than a per-symbol lookup, left for a later pass.
   getMarketOverview(): Promise<MarketOverview> {
     return this.mock.getMarketOverview();
   }
 
-  getFundamentals(symbolOrName: string): Promise<FundamentalData> {
-    return this.mock.getFundamentals(normalizeSymbolInput(symbolOrName));
+  async getMonthlyRevenue(symbolOrName: string): Promise<MonthlyRevenue[]> {
+    const symbol = normalizeSymbolInput(symbolOrName);
+    try {
+      const rows = await fetchFinMindDataset<FinMindRevenueRow>("TaiwanStockMonthRevenue", {
+        data_id: symbol,
+        start_date: dateNDaysAgo(26 * 31),
+      });
+      if (rows.length === 0) throw new Error("empty");
+      return monthlyRevenueFromRows(rows);
+    } catch {
+      return this.mock.getMonthlyRevenue(symbol);
+    }
   }
 
-  getQuarterlyEps(symbolOrName: string): Promise<QuarterlyEps[]> {
-    return this.mock.getQuarterlyEps(normalizeSymbolInput(symbolOrName));
+  async getInstitutionalTrading(symbolOrName: string): Promise<InstitutionalTrading> {
+    const symbol = normalizeSymbolInput(symbolOrName);
+    let rows: FinMindInstitutionalRow[] = [];
+    try {
+      rows = await fetchFinMindDataset<FinMindInstitutionalRow>(
+        "TaiwanStockInstitutionalInvestorsBuySell",
+        { data_id: symbol, start_date: dateNDaysAgo(40) }
+      );
+    } catch {
+      return this.mock.getInstitutionalTrading(symbol);
+    }
+    if (rows.length === 0) return this.mock.getInstitutionalTrading(symbol);
+
+    const byDate = new Map<string, { foreign: number; trust: number; dealer: number }>();
+    for (const row of rows) {
+      const category = classifyInstitution(row.name);
+      if (!category) continue;
+      const net = (Number(row.buy) || 0) - (Number(row.sell) || 0);
+      const entry = byDate.get(row.date) ?? { foreign: 0, trust: 0, dealer: 0 };
+      entry[category] += net;
+      byDate.set(row.date, entry);
+    }
+    const dates = Array.from(byDate.keys()).sort();
+    const toLots = (shares: number) => Math.round(shares / 1000);
+    const sumNet = (ds: string[], key: "foreign" | "trust" | "dealer") =>
+      ds.reduce((sum, d) => sum + (byDate.get(d)?.[key] ?? 0), 0);
+    const snapshot = (key: "foreign" | "trust" | "dealer") => ({
+      today: toLots(sumNet(dates.slice(-1), key)),
+      last5d: toLots(sumNet(dates.slice(-5), key)),
+      last20d: toLots(sumNet(dates.slice(-20), key)),
+    });
+
+    const foreign = snapshot("foreign");
+    const trust = snapshot("trust");
+    const dealer = snapshot("dealer");
+    const bullish = foreign.last5d > 0 && trust.last5d > 0;
+    return {
+      symbol,
+      foreign,
+      trust,
+      dealer,
+      narrative: bullish
+        ? "外資與投信近5日呈現買超，法人籌碼偏多。"
+        : "近5日法人買賣方向分歧或轉為賣超，籌碼面偏中性至偏弱，建議留意後續籌碼變化。",
+      isMock: false,
+    };
   }
 
-  getMonthlyRevenue(symbolOrName: string): Promise<MonthlyRevenue[]> {
-    return this.mock.getMonthlyRevenue(normalizeSymbolInput(symbolOrName));
+  async getMarginTrading(symbolOrName: string): Promise<MarginTrading> {
+    const symbol = normalizeSymbolInput(symbolOrName);
+    let rows: FinMindMarginRow[] = [];
+    try {
+      rows = await fetchFinMindDataset<FinMindMarginRow>("TaiwanStockMarginPurchaseShortSale", {
+        data_id: symbol,
+        start_date: dateNDaysAgo(10),
+      });
+    } catch {
+      return this.mock.getMarginTrading(symbol);
+    }
+    if (rows.length === 0) return this.mock.getMarginTrading(symbol);
+
+    const sorted = [...rows].sort((a, b) => (a.date < b.date ? -1 : 1));
+    const latest = sorted[sorted.length - 1];
+    const marginBalance = Number(latest.MarginPurchaseTodayBalance) || 0;
+    const marginChange = marginBalance - (Number(latest.MarginPurchaseYesterdayBalance) || 0);
+    const shortBalance = Number(latest.ShortSaleTodayBalance) || 0;
+    const shortChange = shortBalance - (Number(latest.ShortSaleYesterdayBalance) || 0);
+    const shortMarginRatio = marginBalance > 0 ? round2((shortBalance / marginBalance) * 100) : 0;
+
+    const flags: string[] = [];
+    if (marginBalance > 0 && marginChange > marginBalance * 0.1) flags.push("融資大增");
+    if (marginBalance > 0 && marginChange < -marginBalance * 0.1) flags.push("融資減少");
+    if (shortBalance > 0 && shortChange > shortBalance * 0.15) flags.push("融券增加");
+    if (flags.length === 0) flags.push("籌碼沉澱");
+
+    return {
+      symbol,
+      marginBalance: Math.round(marginBalance),
+      marginChange: Math.round(marginChange),
+      shortBalance: Math.round(shortBalance),
+      shortChange: Math.round(shortChange),
+      shortMarginRatio,
+      flags,
+      isMock: false,
+    };
   }
 
-  getInstitutionalTrading(symbolOrName: string): Promise<InstitutionalTrading> {
-    return this.mock.getInstitutionalTrading(normalizeSymbolInput(symbolOrName));
+  async getQuarterlyEps(symbolOrName: string): Promise<QuarterlyEps[]> {
+    const symbol = normalizeSymbolInput(symbolOrName);
+    try {
+      const rows = await fetchFinMindDataset<FinMindFinancialStatementRow>(
+        "TaiwanStockFinancialStatements",
+        { data_id: symbol, start_date: dateNDaysAgo(365 * 3) }
+      );
+      const epsRows = rows
+        .filter((r) => r.type === "EPS")
+        .sort((a, b) => (a.date < b.date ? -1 : 1));
+      if (epsRows.length === 0) throw new Error("empty");
+      return epsRows.slice(-8).map((r) => ({
+        quarter: quarterLabelFromDate(r.date),
+        eps: round2(Number(r.value) || 0),
+      }));
+    } catch {
+      return this.mock.getQuarterlyEps(symbol);
+    }
   }
 
-  getMarginTrading(symbolOrName: string): Promise<MarginTrading> {
-    return this.mock.getMarginTrading(normalizeSymbolInput(symbolOrName));
+  async getFundamentals(symbolOrName: string): Promise<FundamentalData> {
+    const symbol = normalizeSymbolInput(symbolOrName);
+
+    const [perResult, revenueResult, epsResult] = await Promise.allSettled([
+      fetchFinMindDataset<FinMindPerRow>("TaiwanStockPER", { data_id: symbol, start_date: dateNDaysAgo(20) }),
+      this.getMonthlyRevenue(symbol),
+      this.getQuarterlyEps(symbol),
+    ]);
+
+    const perRows = perResult.status === "fulfilled" ? perResult.value : [];
+    if (perRows.length === 0) {
+      // No real PE/PB available for this symbol (e.g. some ETFs) — fall back wholesale.
+      return this.mock.getFundamentals(symbol);
+    }
+    const latestPer = [...perRows].sort((a, b) => (a.date < b.date ? -1 : 1)).at(-1)!;
+
+    const revenues = revenueResult.status === "fulfilled" ? revenueResult.value : [];
+    const latestRevenue = revenues.at(-1);
+
+    // ROE / margin ratios need balance-sheet line items we don't parse yet —
+    // still model-estimated (seeded, not fabricated to look precise) until
+    // that's wired up for real.
+    const mockFundamentals = await this.mock.getFundamentals(symbol);
+
+    const epsSeries = epsResult.status === "fulfilled" ? epsResult.value : [];
+    const eps = epsSeries.at(-1)?.eps ?? mockFundamentals.eps;
+
+    return {
+      symbol,
+      eps,
+      pe: round2(Number(latestPer.PER) || mockFundamentals.pe),
+      pb: round2(Number(latestPer.PBR) || mockFundamentals.pb),
+      roe: mockFundamentals.roe,
+      grossMargin: mockFundamentals.grossMargin,
+      operatingMargin: mockFundamentals.operatingMargin,
+      netMargin: mockFundamentals.netMargin,
+      revenue: latestRevenue ? latestRevenue.revenue : mockFundamentals.revenue,
+      revenueYoY: latestRevenue ? latestRevenue.yoy : mockFundamentals.revenueYoY,
+      revenueMoM: latestRevenue ? latestRevenue.mom : mockFundamentals.revenueMoM,
+      grossMarginTrend: mockFundamentals.grossMarginTrend,
+      isMock: false,
+    };
   }
 }
