@@ -18,6 +18,12 @@ function readFromStorage(): HoldingItem[] {
 
 let cache: HoldingItem[] = readFromStorage();
 
+// Must be a single stable reference — a fresh [] literal on every call
+// makes useSyncExternalStore think the snapshot changed every render,
+// which React detects and errors out on ("should be cached to avoid an
+// infinite loop").
+const EMPTY: HoldingItem[] = [];
+
 function writeToStorage(items: HoldingItem[]) {
   cache = items;
   if (typeof window !== "undefined") {
@@ -36,7 +42,7 @@ function getSnapshot() {
 }
 
 function getServerSnapshot(): HoldingItem[] {
-  return [];
+  return EMPTY;
 }
 
 const noopSubscribe = () => () => {};

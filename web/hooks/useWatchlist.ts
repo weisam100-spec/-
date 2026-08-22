@@ -21,6 +21,12 @@ function readFromStorage(): WatchlistItem[] {
 // updated only when the watchlist actually changes.
 let cache: WatchlistItem[] = readFromStorage();
 
+// Must be a single stable reference — a fresh [] literal on every call
+// makes useSyncExternalStore think the snapshot changed every render,
+// which React detects and errors out on ("should be cached to avoid an
+// infinite loop").
+const EMPTY: WatchlistItem[] = [];
+
 function writeToStorage(items: WatchlistItem[]) {
   cache = items;
   if (typeof window !== "undefined") {
@@ -39,7 +45,7 @@ function getSnapshot() {
 }
 
 function getServerSnapshot(): WatchlistItem[] {
-  return [];
+  return EMPTY;
 }
 
 const noopSubscribe = () => () => {};
