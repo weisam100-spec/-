@@ -11,11 +11,11 @@ import type {
   StockQuote,
   StockSearchResult,
 } from "@/lib/types/stock";
-import { findKnownStock, searchKnownStocks } from "@/lib/constants/stocks";
+import { findKnownStock, looksLikeStockCode, searchKnownStocks } from "@/lib/constants/stocks";
 import { resampleMonthly, resampleWeekly } from "@/lib/utils/resampleBars";
 import { StockDataProvider, StockNotFoundError } from "./StockDataProvider";
 import { MockStockDataProvider } from "./MockStockDataProvider";
-import { fetchFinMindDataset } from "./finmind/client";
+import { fetchFinMindDataset, fetchStockName } from "./finmind/client";
 
 interface FinMindStockPriceRow {
   date: string;
@@ -47,10 +47,27 @@ function toDateString(d: Date) {
   return d.toISOString().slice(0, 10);
 }
 
-function requireKnownStock(symbolOrName: string) {
-  const stock = findKnownStock(symbolOrName);
-  if (!stock) throw new StockNotFoundError(symbolOrName);
-  return stock;
+/**
+ * Resolves any valid-looking TW stock code even if it's not in our curated
+ * KNOWN_STOCKS list — FinMind covers the full TWSE/TPEx universe, our list
+ * is just autocomplete suggestions. Only rejects input that neither matches
+ * a known name/symbol nor looks like a plausible code at all.
+ */
+async function resolveStock(symbolOrName: string): Promise<{ symbol: string; name: string }> {
+  const known = findKnownStock(symbolOrName);
+  if (known) return known;
+
+  const trimmed = symbolOrName.trim();
+  if (!looksLikeStockCode(trimmed)) {
+    throw new StockNotFoundError(`${symbolOrName}（請輸入正確的股票代號，例如 2330）`);
+  }
+  const name = await fetchStockName(trimmed);
+  return { symbol: trimmed, name: name ?? trimmed };
+}
+
+/** Lightweight, non-throwing symbol normalization for the mock-delegated methods below (no name needed). */
+function normalizeSymbolInput(symbolOrName: string): string {
+  return findKnownStock(symbolOrName)?.symbol ?? symbolOrName.trim();
 }
 
 function rowToBar(row: FinMindStockPriceRow): OhlcvBar {
@@ -89,7 +106,7 @@ export class FinMindStockDataProvider implements StockDataProvider {
   private mock = new MockStockDataProvider();
 
   async getStockQuote(symbolOrName: string): Promise<StockQuote> {
-    const stock = requireKnownStock(symbolOrName);
+    const stock = await resolveStock(symbolOrName);
     const rows = await fetchDailyBars(stock.symbol, 15);
     if (rows.length === 0) {
       throw new StockNotFoundError(
@@ -128,7 +145,7 @@ export class FinMindStockDataProvider implements StockDataProvider {
     interval: KLineInterval,
     range: KLineRange
   ): Promise<OhlcvBar[]> {
-    const stock = requireKnownStock(symbolOrName);
+    const stock = await resolveStock(symbolOrName);
     const rows = await fetchDailyBars(stock.symbol, RANGE_CALENDAR_DAYS[range]);
     if (rows.length === 0) {
       throw new StockNotFoundError(
@@ -156,28 +173,30 @@ export class FinMindStockDataProvider implements StockDataProvider {
   }
 
   // --- Not yet wired to a real source; delegated to mock (Phase 2) ---
+  // Normalized (not fully resolved) since mock data never needs a real name
+  // and accepts any symbol string — see MockStockDataProvider.
 
   getMarketOverview(): Promise<MarketOverview> {
     return this.mock.getMarketOverview();
   }
 
   getFundamentals(symbolOrName: string): Promise<FundamentalData> {
-    return this.mock.getFundamentals(symbolOrName);
+    return this.mock.getFundamentals(normalizeSymbolInput(symbolOrName));
   }
 
   getQuarterlyEps(symbolOrName: string): Promise<QuarterlyEps[]> {
-    return this.mock.getQuarterlyEps(symbolOrName);
+    return this.mock.getQuarterlyEps(normalizeSymbolInput(symbolOrName));
   }
 
   getMonthlyRevenue(symbolOrName: string): Promise<MonthlyRevenue[]> {
-    return this.mock.getMonthlyRevenue(symbolOrName);
+    return this.mock.getMonthlyRevenue(normalizeSymbolInput(symbolOrName));
   }
 
   getInstitutionalTrading(symbolOrName: string): Promise<InstitutionalTrading> {
-    return this.mock.getInstitutionalTrading(symbolOrName);
+    return this.mock.getInstitutionalTrading(normalizeSymbolInput(symbolOrName));
   }
 
   getMarginTrading(symbolOrName: string): Promise<MarginTrading> {
-    return this.mock.getMarginTrading(symbolOrName);
+    return this.mock.getMarginTrading(normalizeSymbolInput(symbolOrName));
   }
 }

@@ -35,6 +35,20 @@ function requireKnownStock(symbolOrName: string) {
   return stock;
 }
 
+/**
+ * Never throws: mock data is synthetic and seeded off the symbol string, so
+ * it can happily generate plausible-looking numbers for any input, not just
+ * the curated KNOWN_STOCKS list. Used by the methods FinMindStockDataProvider
+ * delegates to, so those work for any real TW stock code too, not just the
+ * ~60 in our autocomplete list.
+ */
+function resolveMockStock(symbolOrName: string): { symbol: string; name: string } {
+  const known = findKnownStock(symbolOrName);
+  if (known) return known;
+  const trimmed = symbolOrName.trim();
+  return { symbol: trimmed, name: trimmed };
+}
+
 /** Full daily bar series (~5y + buffer), stable per symbol, ending yesterday. */
 function generateHistoricalDailySeries(symbol: string): OhlcvBar[] {
   const totalDays = RANGE_TRADING_DAYS["5Y"] + 40;
@@ -166,15 +180,16 @@ export class MockStockDataProvider implements StockDataProvider {
   }
 
   async getFundamentals(symbolOrName: string): Promise<FundamentalData> {
-    const stock = requireKnownStock(symbolOrName);
+    const stock = resolveMockStock(symbolOrName);
     const rand = createSeededRandom(`${stock.symbol}:fundamentals:${todaySeedSuffix()}`);
     const eps = round2(0.5 + rand() * 15);
-    const quote = await this.getStockQuote(stock.symbol);
+    const priceRand = createSeededRandom(`${stock.symbol}:basePrice`);
+    const syntheticPrice = round2(20 + priceRand() * 980);
     const marginTrendRoll = rand();
     return {
       symbol: stock.symbol,
       eps,
-      pe: round2(quote.price / eps),
+      pe: round2(syntheticPrice / eps),
       pb: round2(1 + rand() * 8),
       roe: round2(5 + rand() * 25),
       grossMargin: round2(10 + rand() * 50),
@@ -189,7 +204,7 @@ export class MockStockDataProvider implements StockDataProvider {
   }
 
   async getQuarterlyEps(symbolOrName: string): Promise<QuarterlyEps[]> {
-    const stock = requireKnownStock(symbolOrName);
+    const stock = resolveMockStock(symbolOrName);
     const rand = createSeededRandom(`${stock.symbol}:qeps`);
     const quarters = ["2024 Q3", "2024 Q4", "2025 Q1", "2025 Q2", "2025 Q3", "2025 Q4", "2026 Q1", "2026 Q2"];
     let eps = 1 + rand() * 5;
@@ -200,7 +215,7 @@ export class MockStockDataProvider implements StockDataProvider {
   }
 
   async getMonthlyRevenue(symbolOrName: string): Promise<MonthlyRevenue[]> {
-    const stock = requireKnownStock(symbolOrName);
+    const stock = resolveMockStock(symbolOrName);
     const rand = createSeededRandom(`${stock.symbol}:revenue`);
     const months: MonthlyRevenue[] = [];
     let revenue = (500 + rand() * 5000) * 1_000_000;
@@ -221,7 +236,7 @@ export class MockStockDataProvider implements StockDataProvider {
   }
 
   async getInstitutionalTrading(symbolOrName: string): Promise<InstitutionalTrading> {
-    const stock = requireKnownStock(symbolOrName);
+    const stock = resolveMockStock(symbolOrName);
     const rand = createSeededRandom(`${stock.symbol}:chip:${todaySeedSuffix()}`);
     const snap = () => ({
       today: Math.round((rand() - 0.45) * 3000),
@@ -245,7 +260,7 @@ export class MockStockDataProvider implements StockDataProvider {
   }
 
   async getMarginTrading(symbolOrName: string): Promise<MarginTrading> {
-    const stock = requireKnownStock(symbolOrName);
+    const stock = resolveMockStock(symbolOrName);
     const rand = createSeededRandom(`${stock.symbol}:margin:${todaySeedSuffix()}`);
     const marginBalance = Math.round(1000 + rand() * 20000);
     const marginChange = Math.round((rand() - 0.5) * 2000);

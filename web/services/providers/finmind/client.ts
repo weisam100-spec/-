@@ -55,3 +55,31 @@ export async function fetchFinMindDataset<T>(
   }
   return body.data ?? [];
 }
+
+interface FinMindStockInfoRow {
+  stock_id: string;
+  stock_name: string;
+  industry_category?: string;
+  type?: string;
+}
+
+// In-memory only (resets on server restart) — just avoids re-fetching the
+// same name within one running process for symbols outside KNOWN_STOCKS.
+const stockNameCache = new Map<string, string | null>();
+
+/** Resolves a display name for a symbol not in our curated list, via FinMind's company-info dataset. */
+export async function fetchStockName(symbol: string): Promise<string | null> {
+  if (stockNameCache.has(symbol)) return stockNameCache.get(symbol)!;
+  try {
+    const rows = await fetchFinMindDataset<FinMindStockInfoRow>("TaiwanStockInfo", {
+      data_id: symbol,
+    });
+    const name = rows[0]?.stock_name ?? null;
+    stockNameCache.set(symbol, name);
+    return name;
+  } catch {
+    // Name lookup is a nice-to-have; never let it block quote/history.
+    stockNameCache.set(symbol, null);
+    return null;
+  }
+}
