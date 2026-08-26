@@ -1,0 +1,134 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  CANCELLED
+  EXPIRED
+}
+
+enum QueueStatus {
+  WAITING
+  ADMITTED
+  EXPIRED
+  USED
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         Role     @default(USER)
+  createdAt    DateTime @default(now())
+
+  events        Event[]        @relation("EventOrganizer")
+  orders        Order[]
+  queueTickets  QueueTicket[]
+}
+
+model Event {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  title       String
+  description String
+  venue       String
+  startAt     DateTime
+  saleStartAt DateTime
+  saleEndAt   DateTime
+  coverColor  String   @default("#6366f1")
+  createdAt   DateTime @default(now())
+
+  // Virtual waiting room configuration
+  queueEnabled       Boolean @default(true)
+  admitBatchSize     Int     @default(20)
+  admitIntervalSec   Int     @default(5)
+  admitWindowMinutes Int     @default(5)
+  holdMinutes        Int     @default(10)
+
+  organizerId String
+  organizer   User   @relation("EventOrganizer", fields: [organizerId], references: [id])
+
+  ticketTypes  TicketType[]
+  orders       Order[]
+  queueTickets QueueTicket[]
+
+  @@index([saleStartAt])
+}
+
+model TicketType {
+  id            String   @id @default(cuid())
+  eventId       String
+  event         Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  name          String
+  priceCents    Int
+  totalQty      Int
+  remainingQty  Int
+  maxPerOrder   Int      @default(4)
+  createdAt     DateTime @default(now())
+
+  orderItems OrderItem[]
+
+  @@index([eventId])
+}
+
+model Order {
+  id          String      @id @default(cuid())
+  userId      String
+  user        User        @relation(fields: [userId], references: [id])
+  eventId     String
+  event       Event       @relation(fields: [eventId], references: [id])
+  status      OrderStatus @default(PENDING)
+  totalCents  Int
+  createdAt   DateTime    @default(now())
+  expiresAt   DateTime
+  paidAt      DateTime?
+
+  items OrderItem[]
+
+  @@index([eventId, status])
+  @@index([status, expiresAt])
+}
+
+model OrderItem {
+  id           String     @id @default(cuid())
+  orderId      String
+  order        Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  ticketTypeId String
+  ticketType   TicketType @relation(fields: [ticketTypeId], references: [id])
+  quantity     Int
+  unitCents    Int
+}
+
+// One row per user per event: their place in the virtual waiting room.
+model QueueTicket {
+  id          String      @id @default(cuid())
+  token       String      @unique
+  eventId     String
+  event       Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User        @relation(fields: [userId], references: [id])
+  position    Int
+  status      QueueStatus @default(WAITING)
+  createdAt   DateTime    @default(now())
+  admittedAt  DateTime?
+  expiresAt   DateTime?
+
+  @@unique([eventId, userId])
+  @@index([eventId, status, position])
+}
