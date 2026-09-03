@@ -158,6 +158,26 @@
   h2.section-title { font-family: var(--font-display); font-size: 18px; font-weight: 700; margin: 28px 0 6px; }
   .section-sub { font-size: 13px; color: var(--ink-muted); margin-bottom: 14px; }
 
+  /* Cost comparison */
+  .compare-controls {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    background: var(--surface-2); border-radius: 12px; padding: 13px 16px; margin-bottom: 16px;
+  }
+  .compare-controls label { font-size: 13.5px; font-weight: 700; }
+  .compare-controls select {
+    padding: 8px 12px; border-radius: 8px; border: 1.5px solid var(--line);
+    background: var(--surface); color: var(--ink); font-size: 13.5px; font-family: inherit;
+  }
+  .compare-list { display: flex; flex-direction: column; gap: 12px; margin-bottom: 8px; }
+  .compare-row { border: 1px solid var(--line); border-radius: 12px; padding: 15px 17px; background: var(--surface-2); }
+  .compare-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
+  .compare-name { font-family: var(--font-display); font-weight: 700; font-size: 14.5px; }
+  .compare-amount { font-variant-numeric: tabular-nums; font-weight: 800; color: var(--accent); font-size: 15px; white-space: nowrap; }
+  .compare-bar-track { height: 7px; background: var(--line); border-radius: 999px; overflow: hidden; margin-bottom: 9px; }
+  .compare-bar-fill { height: 100%; background: var(--accent); border-radius: 999px; transition: width .3s; }
+  .compare-note { font-size: 12.5px; color: var(--ink-muted); line-height: 1.75; }
+  .compare-disclaimer { font-size: 11.5px; color: var(--ink-muted); margin: 10px 0 24px; line-height: 1.75; }
+
   /* Checklists */
   ul.check-list { list-style: none; }
   ul.check-list li {
@@ -275,6 +295,16 @@
       <h2 class="section-title">六大資格方向</h2>
       <p class="section-sub">綠色代表可能符合、黃色代表需進一步評估、灰色代表可能不適用</p>
       <div class="cat-grid" id="resultCards"></div>
+
+      <h2 class="section-title">照護方案費用比較（試算）</h2>
+      <p class="section-sub">比較「自己照顧、長照 2.0 居家服務、日間照顧、外籍看護、住宿式機構」五種方案的月支出概估</p>
+      <div class="compare-controls">
+        <label for="cmsLevelSelect">試算用 CMS 長照需要等級</label>
+        <select id="cmsLevelSelect"></select>
+        <span id="cmsLevelHint" class="compare-note" style="margin:0;"></span>
+      </div>
+      <div class="compare-list" id="compareList"></div>
+      <p class="compare-disclaimer" id="compareDisclaimer"></p>
 
       <h2 class="section-title">應備文件清單</h2>
       <p class="section-sub">勾選已完成項目，進度會保留在此瀏覽器中</p>
@@ -664,6 +694,76 @@
     });
   }
 
+  /* ---------- Cost comparison (market-rate estimates, not official figures) ---------- */
+  var CMS_MONTHLY_ALLOWANCE = { 2: 10020, 3: 15460, 4: 18580, 5: 24100, 6: 28070, 7: 32090, 8: 36180 };
+  var SELF_PAY_RATIO = { low_income: 0, mid_low_income: 0.05, general: 0.16, unclear: 0.16 };
+  var FOREIGN_CAREGIVER_MONTHLY = { wage: 20000, stabilizationFee: 2000, healthInsurance: 1428, laborInjuryInsurance: 56 };
+  var INSTITUTION_MONTHLY_RANGE = { low: 30000, high: 60000 };
+
+  function defaultCmsLevel(a) {
+    if (a.adl === "full_dependent") return 7;
+    if (a.adl === "partial_dependent") return 4;
+    if (a.adl === "mostly_independent") return 2;
+    return 4;
+  }
+
+  function fmtNT(n) { return "NT$" + Math.round(n).toLocaleString("en-US"); }
+
+  function computeComparison(a, cmsLevel) {
+    var ratio = SELF_PAY_RATIO[a.economic] != null ? SELF_PAY_RATIO[a.economic] : 0.16;
+    var allowance = CMS_MONTHLY_ALLOWANCE[cmsLevel] || 0;
+    var homeCareSelfPay = allowance * ratio;
+    var dayCareSelfPay = allowance * ratio;
+    var foreignTotal = FOREIGN_CAREGIVER_MONTHLY.wage + FOREIGN_CAREGIVER_MONTHLY.stabilizationFee + FOREIGN_CAREGIVER_MONTHLY.healthInsurance + FOREIGN_CAREGIVER_MONTHLY.laborInjuryInsurance;
+    var institutionMid = (INSTITUTION_MONTHLY_RANGE.low + INSTITUTION_MONTHLY_RANGE.high) / 2;
+
+    return [
+      { name: "自己照顧（家人親自照顧）", amount: 0, amountLabel: "無直接現金支出", note: "沒有服務費用，但需考量家庭照顧者的時間、體力、心理負荷，以及可能減少的工作收入（機會成本），長期而言仍是一種實質成本。" },
+      { name: "長照 2.0 居家服務（居服員到宅）", amount: homeCareSelfPay, amountLabel: fmtNT(homeCareSelfPay) + " / 月起", note: "政府月給付額度約 " + fmtNT(allowance) + "（依 CMS " + cmsLevel + " 級），依經濟身分自付約 " + Math.round(ratio * 100) + "%；超出額度部分需全額自付。" },
+      { name: "長照 2.0 日間照顧中心", amount: dayCareSelfPay, amountLabel: fmtNT(dayCareSelfPay) + " / 月起", note: "自付比例與居家服務相同，另需考量交通接送費用，如無法使用長照交通接送資源，可能需自費。" },
+      { name: "聘僱外籍家庭看護工", amount: foreignTotal, amountLabel: fmtNT(foreignTotal) + " / 月起", note: "雇主每月概估負擔，含薪資 " + fmtNT(FOREIGN_CAREGIVER_MONTHLY.wage) + "、就業安定費 " + fmtNT(FOREIGN_CAREGIVER_MONTHLY.stabilizationFee) + "、健保及職災保險雇主負擔部分；不含仲介服務費、膳宿及每年續約相關成本。" },
+      { name: "住宿式長照機構（護理之家／長照機構）", amount: institutionMid, amountLabel: fmtNT(INSTITUTION_MONTHLY_RANGE.low) + " ～ " + fmtNT(INSTITUTION_MONTHLY_RANGE.high) + " / 月", note: "依地區、房型及照護等級差異甚大；符合低收入戶／中低收入戶等資格者，另有機構補助方案可折抵部分費用，額度依當年度公告及地方政府方案而定。" }
+    ];
+  }
+
+  function renderComparison() {
+    var select = document.getElementById("cmsLevelSelect");
+    var level = parseInt(select.value, 10);
+    var rows = computeComparison(answers, level);
+    var maxAmount = Math.max.apply(null, rows.map(function (row) { return row.amount; }));
+    var list = document.getElementById("compareList");
+    list.innerHTML = "";
+    rows.forEach(function (row) {
+      var div = document.createElement("div");
+      div.className = "compare-row";
+      var pct = maxAmount > 0 ? Math.max(2, Math.round((row.amount / maxAmount) * 100)) : 2;
+      div.innerHTML =
+        '<div class="compare-head"><span class="compare-name">' + row.name + '</span><span class="compare-amount">' + row.amountLabel + '</span></div>' +
+        '<div class="compare-bar-track"><div class="compare-bar-fill" style="width:' + pct + '%"></div></div>' +
+        '<div class="compare-note">' + row.note + '</div>';
+      list.appendChild(div);
+    });
+  }
+
+  function initComparison() {
+    var select = document.getElementById("cmsLevelSelect");
+    select.innerHTML = "";
+    for (var lvl = 2; lvl <= 8; lvl++) {
+      var opt = document.createElement("option");
+      opt.value = String(lvl); opt.textContent = "第 " + lvl + " 級";
+      select.appendChild(opt);
+    }
+    select.value = String(defaultCmsLevel(answers));
+    document.getElementById("cmsLevelHint").textContent =
+      answers.cms === "yes" ? "已依您填答的自理能力概略帶入，建議改填實際核定等級以提高準確度。" : "已依您填答的自理能力概略帶入，實際等級需經照管中心評估核定。";
+    select.onchange = renderComparison;
+    renderComparison();
+
+    var today = new Date().toISOString().slice(0, 10);
+    document.getElementById("compareDisclaimer").textContent =
+      "⚠️ 以上金額為市場行情概估（資料整理日：" + today + "），非官方公告數據，僅供初步規劃參考。實際費用因個案、機構、地區及議價結果而異，長照給付額度與自付比例請以衛生福利部及照管中心最新公告為準，外籍看護工相關費用請以勞動部及仲介公司報價為準。";
+  }
+
   function showResults() {
     var r = computeResults(answers);
 
@@ -698,6 +798,8 @@
       div.innerHTML = '<div class="result-title">' + item.title + '<span class="status-pill">' + item.r.label + '</span></div><div class="result-desc">' + item.r.text + '</div>';
       cardsContainer.appendChild(div);
     });
+
+    initComparison();
 
     var docs = buildDocuments(answers, r);
     renderChecklist(document.getElementById("docList"), docs, "ltc-doc-state", function (d) {
