@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>安心長照導航</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg-a: #f5f7fb; --bg-b: #ffffff; --bg-c: #eef2f7;
+    --text: #111827; --text-muted: #64748b;
+    --card-bg: #ffffff; --card-border: #e2e8f0;
+    --card-shadow: 0 6px 18px rgba(15,23,42,.06);
+    --shadow-lg: 0 10px 28px rgba(15,23,42,.1);
+    --accent: #0f766e; --accent-text: #ffffff;
+    --tag-bg: #f1f5f9; --tag-text: #475569;
+    --good-bg: #ecfdf5; --good-border: #a7f3d0; --good-text: #065f46;
+    --warn-bg: #fffbeb; --warn-border: #fde68a; --warn-text: #92400e;
+    --bad-bg: #f8fafc; --bad-border: #e2e8f0; --bad-text: #475569;
+    --notice-bg: #eff6ff; --notice-border: #bfdbfe; --notice-text: #1e3a8a;
+    --risk-bg: #fff7ed; --risk-border: #fed7aa; --risk-text: #9a3412;
+    --track: #e2e8f0;
+  }
+  [data-theme="dark"] {
+    --bg-a: #0b1220; --bg-b: #0f172a; --bg-c: #111827;
+    --text: #e5e7eb; --text-muted: #94a3b8;
+    --card-bg: #1e293b; --card-border: #334155;
+    --card-shadow: 0 6px 18px rgba(0,0,0,.35);
+    --shadow-lg: 0 10px 28px rgba(0,0,0,.45);
+    --accent: #2dd4bf; --accent-text: #0f172a;
+    --tag-bg: #334155; --tag-text: #cbd5e1;
+    --good-bg: #052e2b; --good-border: #0f766e; --good-text: #6ee7b7;
+    --warn-bg: #3a2e08; --warn-border: #b45309; --warn-text: #fcd34d;
+    --bad-bg: #1e293b; --bad-border: #334155; --bad-text: #cbd5e1;
+    --notice-bg: #17253d; --notice-border: #2563eb; --notice-text: #bfdbfe;
+    --risk-bg: #3a2308; --risk-border: #ea580c; --risk-text: #fed7aa;
+    --track: #334155;
+  }
+
+  body {
+    font-family: "Microsoft JhengHei", "PingFang TC", Arial, sans-serif;
+    background: linear-gradient(135deg, var(--bg-a), var(--bg-b), var(--bg-c));
+    color: var(--text);
+    min-height: 100vh;
+    transition: background .3s, color .3s;
+    line-height: 1.6;
+  }
+  .container { max-width: 880px; margin: auto; padding: 28px 20px 80px; }
+
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .brand-mark {
+    width: 42px; height: 42px; border-radius: 12px;
+    background: var(--accent); color: var(--accent-text);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 900; font-size: 18px; flex-shrink: 0;
+  }
+  .brand-name { font-weight: 800; font-size: 18px; }
+  .brand-sub { font-size: 12px; color: var(--text-muted); }
+  .icon-btn {
+    width: 42px; height: 42px; border-radius: 12px;
+    border: 1px solid var(--card-border);
+    background: var(--card-bg); color: var(--text);
+    font-size: 17px; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: .2s; flex-shrink: 0;
+  }
+  .icon-btn:hover { transform: translateY(-2px); box-shadow: var(--card-shadow); }
+
+  .badge {
+    display: inline-block; background: var(--accent); color: var(--accent-text);
+    padding: 6px 14px; border-radius: 999px; font-size: 13px; font-weight: 700;
+    margin-bottom: 14px;
+  }
+  h1 { font-size: 32px; font-weight: 900; margin-bottom: 12px; letter-spacing: -.5px; }
+  .subtitle { color: var(--text-muted); max-width: 640px; margin-bottom: 20px; }
+
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 20px;
+    padding: 24px;
+    box-shadow: var(--card-shadow);
+    margin-bottom: 18px;
+  }
+
+  .feature-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px; margin: 20px 0;
+  }
+  .feature {
+    background: var(--tag-bg); border-radius: 14px; padding: 14px 16px; font-size: 13.5px;
+  }
+  .feature b { display: block; margin-bottom: 4px; font-size: 14px; }
+
+  button {
+    border: none; border-radius: 14px; padding: 13px 22px; font-weight: 700;
+    cursor: pointer; transition: .2s; font-family: inherit; font-size: 15px;
+  }
+  button:hover { transform: translateY(-2px); box-shadow: 0 8px 18px rgba(15,23,42,.12); }
+  button:disabled { opacity: .45; cursor: not-allowed; transform: none; box-shadow: none; }
+  .btn-primary { background: var(--accent); color: var(--accent-text); }
+  .btn-ghost { background: var(--tag-bg); color: var(--text); }
+  .btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+
+  .notice {
+    background: var(--notice-bg); border: 1px solid var(--notice-border); color: var(--notice-text);
+    border-radius: 14px; padding: 14px 16px; font-size: 13px; margin-bottom: 18px;
+  }
+  .risk-note {
+    background: var(--risk-bg); border: 1px solid var(--risk-border); color: var(--risk-text);
+    border-radius: 14px; padding: 14px 16px; font-size: 13px; margin-top: 22px;
+  }
+
+  /* Quiz */
+  .progress-track {
+    height: 8px; background: var(--track); border-radius: 999px; overflow: hidden; margin-bottom: 22px;
+  }
+  .progress-fill { height: 100%; background: var(--accent); border-radius: 999px; transition: width .3s; }
+  .q-step { font-size: 12.5px; color: var(--text-muted); font-weight: 700; margin-bottom: 6px; letter-spacing: .3px; }
+  .q-text { font-size: 20px; font-weight: 800; margin-bottom: 18px; }
+  .options { display: flex; flex-direction: column; gap: 10px; }
+  .option {
+    display: flex; align-items: center; gap: 12px;
+    border: 1.5px solid var(--card-border); border-radius: 14px; padding: 14px 16px;
+    cursor: pointer; transition: .15s; background: var(--card-bg); font-size: 14.5px;
+  }
+  .option:hover { border-color: var(--accent); }
+  .option.selected { border-color: var(--accent); background: var(--good-bg); font-weight: 700; }
+  .option input { accent-color: var(--accent); width: 17px; height: 17px; flex-shrink: 0; }
+  select.county-select {
+    width: 100%; padding: 14px 16px; border-radius: 14px; border: 1.5px solid var(--card-border);
+    background: var(--card-bg); color: var(--text); font-size: 14.5px; font-family: inherit;
+  }
+
+  /* Results */
+  .result-card { border-radius: 18px; padding: 18px 20px; margin-bottom: 14px; border: 1.5px solid; }
+  .result-card.status-likely { background: var(--good-bg); border-color: var(--good-border); color: var(--good-text); }
+  .result-card.status-needs { background: var(--warn-bg); border-color: var(--warn-border); color: var(--warn-text); }
+  .result-card.status-unlikely { background: var(--bad-bg); border-color: var(--bad-border); color: var(--bad-text); }
+  .result-title { font-size: 15px; font-weight: 800; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+  .status-pill { font-size: 12px; padding: 3px 10px; border-radius: 999px; background: rgba(255,255,255,.5); font-weight: 800; }
+  [data-theme="dark"] .status-pill { background: rgba(0,0,0,.25); }
+  .result-desc { font-size: 13.5px; line-height: 1.7; }
+
+  h2.section-title { font-size: 18px; font-weight: 800; margin: 26px 0 12px; }
+  ul.doc-list, ul.step-list { list-style: none; }
+  ul.doc-list li, ul.step-list li {
+    display: flex; gap: 10px; padding: 10px 0; border-bottom: 1px dashed var(--card-border); font-size: 14px;
+  }
+  ul.doc-list li:last-child, ul.step-list li:last-child { border-bottom: none; }
+  ul.doc-list li::before { content: "☐"; color: var(--accent); font-size: 16px; flex-shrink: 0; }
+  ul.step-list li .step-num {
+    width: 24px; height: 24px; border-radius: 999px; background: var(--accent); color: var(--accent-text);
+    display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; flex-shrink: 0;
+  }
+
+  .footer-disclaimer {
+    margin-top: 30px; font-size: 12px; color: var(--text-muted); text-align: center; line-height: 1.8;
+  }
+
+  [hidden] { display: none !important; }
+
+  @media print {
+    .icon-btn, .btn-row, #heroSection, #quizSection, .no-print { display: none !important; }
+    body { background: #fff; color: #000; }
+    .card { box-shadow: none; border: 1px solid #ccc; }
+  }
+
+  @media (max-width: 560px) {
+    h1 { font-size: 26px; }
+    .container { padding: 20px 14px 60px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <div class="brand">
+      <div class="brand-mark">安</div>
+      <div>
+        <div class="brand-name">安心長照導航</div>
+        <div class="brand-sub">長照・外籍看護申請資格快速試算</div>
+      </div>
+    </div>
+    <button class="icon-btn" id="themeToggle" title="切換深色/淺色模式">🌓</button>
+  </div>
+
+  <!-- HERO -->
+  <div id="heroSection">
+    <div class="card">
+      <span class="badge">免費資格試算</span>
+      <h1>10 個問題，快速了解長照與外籍看護申請方向</h1>
+      <p class="subtitle">
+        回答約 10 題關於家人年齡、失智狀況、生活自理能力與經濟狀況的問題，
+        立即取得「外籍家庭看護工申請資格」「巴氏量表可能免評估」「住宿式機構補助」三項可能性評估，
+        並自動產生應備文件清單與下一步聯繫窗口。
+      </p>
+
+      <div class="notice">
+        📌 本工具僅根據您填答的資訊，依現行長照與外籍看護工申請的一般性規則，提供「可能性」方向參考，
+        <b>並非正式資格審查結果</b>。實際資格認定仍以醫療機構專業評估、長期照顧管理中心（照管中心）評估
+        及勞動部、地方政府主管機關最終審查為準。補助金額與地方政府方案可能逐年調整，請以最新公告為準。
+      </div>
+
+      <div class="feature-grid">
+        <div class="feature"><b>🧭 資格方向試算</b>外籍看護 / 巴氏量表免評估 / 機構補助</div>
+        <div class="feature"><b>📋 應備文件清單</b>依您的情況自動產生</div>
+        <div class="feature"><b>🏢 窗口指引</b>照管中心 / 醫院 / 勞動部 / 地方政府</div>
+        <div class="feature"><b>🖨️ 行動清單</b>可列印或另存 PDF 留存</div>
+      </div>
+
+      <button class="btn-primary" id="startBtn">開始測驗 →</button>
+    </div>
+  </div>
+
+  <!-- QUIZ -->
+  <div id="quizSection" hidden>
+    <div class="card">
+      <div class="progress-track"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+      <div class="q-step" id="qStep">問題 1 / 10</div>
+      <div class="q-text" id="qText"></div>
+      <div class="options" id="qOptions"></div>
+      <div class="btn-row">
+        <button class="btn-ghost" id="backBtn">← 上一題</button>
+        <button class="btn-primary" id="nextBtn" disabled>下一題 →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESULTS -->
+  <div id="resultSection" hidden>
+    <div class="card">
+      <span class="badge">試算結果</span>
+      <h1 style="font-size:24px;">您的長照申請行動清單</h1>
+      <p class="subtitle" style="margin-bottom:6px;">資料參考基準日：<span id="dataVersionDate"></span>（規定內容以主管機關最新公告為準）</p>
+
+      <div id="resultCards"></div>
+
+      <h2 class="section-title">📋 建議準備文件</h2>
+      <ul class="doc-list" id="docList"></ul>
+
+      <h2 class="section-title">🏢 建議下一步聯繫窗口</h2>
+      <ul class="step-list" id="stepList"></ul>
+
+      <div class="risk-note">
+        ⚠️ 以上結果僅供申請準備參考，最終資格、補助金額與核定結果，仍需經醫療機構專業評估、
+        長期照顧管理中心（照管中心）評估，以及勞動部勞動力發展署或地方政府主管機關實際審查後始能確認。
+      </div>
+
+      <div class="btn-row no-print">
+        <button class="btn-primary" id="printBtn">🖨️ 列印 / 另存 PDF</button>
+        <button class="btn-ghost" id="restartBtn">重新測驗</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer-disclaimer">
+    安心長照導航 是提供一般性資訊之工具，非醫療、法律或政府機關正式服務。<br/>
+    長照專線：1966（長期照顧管理中心）｜外籍勞工諮詢保護專線：1955
+  </div>
+
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ---------- Theme ---------- */
+  var root = document.documentElement;
+  var savedTheme = localStorage.getItem("ltc-theme");
+  if (savedTheme) root.setAttribute("data-theme", savedTheme);
+  document.getElementById("themeToggle").addEventListener("click", function () {
+    var cur = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
+    root.setAttribute("data-theme", cur);
+    localStorage.setItem("ltc-theme", cur);
+  });
+
+  /* ---------- Data version ---------- */
+  document.getElementById("dataVersionDate").textContent = new Date().toISOString().slice(0, 10);
+
+  /* ---------- Counties ---------- */
+  var COUNTIES = [
+    "臺北市","新北市","桃園市","臺中市","臺南市","高雄市","基隆市","新竹市","新竹縣",
+    "苗栗縣","彰化縣","南投縣","雲林縣","嘉義市","嘉義縣","屏東縣","宜蘭縣","花蓮縣",
+    "臺東縣","澎湖縣","金門縣","連江市"
+  ];
+
+  /* ---------- Questions ---------- */
+  var QUESTIONS = [
+    {
+      id: "age",
+      text: "需要照顧的家人，目前年齡是？",
+      options: [
+        { v: "under65", t: "未滿 65 歲" },
+        { v: "65to79", t: "65～79 歲" },
+        { v: "80plus", t: "80 歲以上" },
+        { v: "unknown", t: "不確定" }
+      ]
+    },
+    {
+      id: "dementia",
+      text: "這位家人是否有醫師診斷的失智症？嚴重程度大約是？",
+      options: [
+        { v: "none", t: "沒有失智症診斷" },
+        { v: "mild", t: "有診斷，程度較輕（CDR 0.5～1 或不確定嚴重度）" },
+        { v: "moderate_severe", t: "有診斷，中度以上（CDR 2 以上）" },
+        { v: "unclear", t: "不確定 / 尚未診斷" }
+      ]
+    },
+    {
+      id: "cms",
+      text: "這位家人是否已到「長期照顧管理中心」做過評估，並取得 CMS 等級（2～8 級）？",
+      options: [
+        { v: "yes", t: "是，已有 CMS 2～8 級評估紀錄" },
+        { v: "no", t: "否，還沒做過評估" },
+        { v: "unclear", t: "不確定" }
+      ]
+    },
+    {
+      id: "disability",
+      text: "這位家人是否領有「身心障礙證明」或「重大傷病卡」？",
+      options: [
+        { v: "cert", t: "有身心障礙證明" },
+        { v: "illness_card", t: "有重大傷病卡" },
+        { v: "none", t: "都沒有" },
+        { v: "unclear", t: "不確定" }
+      ]
+    },
+    {
+      id: "adl",
+      text: "日常生活自理能力大致是？（進食、移位、如廁、穿脫衣物、大小便控制等）",
+      options: [
+        { v: "full_dependent", t: "完全依賴他人協助，幾乎所有活動都需要人幫忙" },
+        { v: "partial_dependent", t: "部分依賴，例如移位、如廁需要協助" },
+        { v: "mostly_independent", t: "大致可自理，僅需少量協助或監督" },
+        { v: "independent", t: "完全可自理" }
+      ]
+    },
+    {
+      id: "caregiver",
+      text: "目前主要照顧者的狀況？",
+      options: [
+        { v: "no_fulltime", t: "沒有家人可以全天照顧，需要有人全天在家協助" },
+        { v: "family_can", t: "家人可以照顧，但希望減輕負擔" },
+        { v: "undecided", t: "尚未確定照顧方式" }
+      ]
+    },
+    {
+      id: "economic",
+      text: "家庭經濟狀況大致屬於？",
+      options: [
+        { v: "low_income", t: "低收入戶" },
+        { v: "mid_low_income", t: "中低收入戶" },
+        { v: "general", t: "一般戶" },
+        { v: "unclear", t: "不確定" }
+      ]
+    },
+    {
+      id: "preference",
+      text: "比較傾向的照顧方式？",
+      options: [
+        { v: "foreign_caregiver", t: "聘僱外籍家庭看護工，在家照顧" },
+        { v: "institution", t: "送至住宿式長照機構（護理之家 / 長照機構）" },
+        { v: "both", t: "還在考慮，兩者都想了解" },
+        { v: "community", t: "想先了解長照 2.0 居家 / 社區服務" }
+      ]
+    },
+    {
+      id: "priorExperience",
+      text: "是否曾聘僱本國看護，或申請過長照相關服務？",
+      options: [
+        { v: "never", t: "從未申請過任何長照或看護服務" },
+        { v: "ltc2", t: "曾申請長照 2.0 服務（如居家服務、日間照顧）" },
+        { v: "local_caregiver", t: "曾聘僱本國籍看護" },
+        { v: "unclear", t: "不確定" }
+      ]
+    },
+    {
+      id: "county",
+      text: "受照顧家人目前設籍 / 居住縣市？",
+      type: "select",
+      options: COUNTIES.map(function (c) { return { v: c, t: c }; })
+    }
+  ];
+
+  var answers = {};
+  var currentIndex = 0;
+
+  /* ---------- Elements ---------- */
+  var heroSection = document.getElementById("heroSection");
+  var quizSection = document.getElementById("quizSection");
+  var resultSection = document.getElementById("resultSection");
+  var qStep = document.getElementById("qStep");
+  var qText = document.getElementById("qText");
+  var qOptions = document.getElementById("qOptions");
+  var progressFill = document.getElementById("progressFill");
+  var backBtn = document.getElementById("backBtn");
+  var nextBtn = document.getElementById("nextBtn");
+
+  document.getElementById("startBtn").addEventListener("click", function () {
+    heroSection.hidden = true;
+    quizSection.hidden = false;
+    currentIndex = 0;
+    renderQuestion();
+  });
+
+  backBtn.addEventListener("click", function () {
+    if (currentIndex === 0) {
+      quizSection.hidden = true;
+      heroSection.hidden = false;
+      return;
+    }
+    currentIndex--;
+    renderQuestion();
+  });
+
+  nextBtn.addEventListener("click", function () {
+    if (currentIndex < QUESTIONS.length - 1) {
+      currentIndex++;
+      renderQuestion();
+    } else {
+      showResults();
+    }
+  });
+
+  function renderQuestion() {
+    var q = QUESTIONS[currentIndex];
+    qStep.textContent = "問題 " + (currentIndex + 1) + " / " + QUESTIONS.length;
+    qText.textContent = q.text;
+    progressFill.style.width = Math.round((currentIndex / QUESTIONS.length) * 100) + "%";
+    qOptions.innerHTML = "";
+
+    if (q.type === "select") {
+      var select = document.createElement("select");
+      select.className = "county-select";
+      var placeholder = document.createElement("option");
+      placeholder.value = "";
+      placeholder.textContent = "請選擇縣市";
+      placeholder.disabled = true;
+      select.appendChild(placeholder);
+      q.options.forEach(function (opt) {
+        var el = document.createElement("option");
+        el.value = opt.v;
+        el.textContent = opt.t;
+        select.appendChild(el);
+      });
+      select.value = answers[q.id] || "";
+      placeholder.selected = !answers[q.id];
+      select.addEventListener("change", function () {
+        answers[q.id] = select.value;
+        nextBtn.disabled = !select.value;
+      });
+      qOptions.appendChild(select);
+      nextBtn.disabled = !answers[q.id];
+    } else {
+      q.options.forEach(function (opt) {
+        var label = document.createElement("label");
+        label.className = "option" + (answers[q.id] === opt.v ? " selected" : "");
+        var input = document.createElement("input");
+        input.type = "radio";
+        input.name = q.id;
+        input.value = opt.v;
+        input.checked = answers[q.id] === opt.v;
+        input.addEventListener("change", function () {
+          answers[q.id] = opt.v;
+          Array.prototype.forEach.call(qOptions.querySelectorAll(".option"), function (o) {
+            o.classList.remove("selected");
+          });
+          label.classList.add("selected");
+          nextBtn.disabled = false;
+        });
+        label.appendChild(input);
+        var span = document.createElement("span");
+        span.textContent = opt.t;
+        label.appendChild(span);
+        qOptions.appendChild(label);
+      });
+      nextBtn.disabled = !answers[q.id];
+    }
+
+    nextBtn.textContent = currentIndex === QUESTIONS.length - 1 ? "查看結果 →" : "下一題 →";
+  }
+
+  /* ---------- Rule engine ---------- */
+  function computeResults(a) {
+    var isDependent = a.adl === "full_dependent" || a.adl === "partial_dependent";
+    var isMostlyIndependent = a.adl === "mostly_independent";
+    var isIndependent = a.adl === "independent";
+
+    // 1. 外籍家庭看護工申請資格
+    var caregiverResult;
+    if (isIndependent) {
+      caregiverResult = {
+        status: "unlikely",
+        label: "可能不符合",
+        text: "依您填答，家人目前日常生活大致可自理，一般較不易通過「需長期照顧之身心失能者」的認定。建議先考慮長照 2.0 居家或社區式服務；若未來自理能力下降，可再重新評估。"
+      };
+    } else if (a.age === "80plus" && isDependent) {
+      caregiverResult = {
+        status: "likely",
+        label: "可能符合",
+        text: "家人年齡 80 歲以上且有照顧需求，依現行規定，80 歲以上長者申請家庭看護工，可能免經醫療機構專業評估，可直接經長期照顧管理中心（照管中心）評估後提出申請，建議儘速洽詢照管中心確認。"
+      };
+    } else if (a.dementia === "moderate_severe" && isDependent) {
+      caregiverResult = {
+        status: "likely",
+        label: "可能符合",
+        text: "中度以上失智症（CDR 2 以上）合併照顧需求，可能符合免另外進行巴氏量表評估的條件，經專科醫師開立診斷證明後即可提出申請，建議攜帶診斷證明洽詢醫院或照管中心。"
+      };
+    } else if (a.cms === "yes" && isDependent) {
+      caregiverResult = {
+        status: "likely",
+        label: "可能符合",
+        text: "已有照管中心 CMS 2～8 級評估紀錄，可能可透過長照服務與外籍看護工「雙軌銜接」機制申請，免重新進行巴氏量表評估，建議攜帶原評估結果洽詢照管中心確認銜接方式。"
+      };
+    } else if (isDependent) {
+      caregiverResult = {
+        status: "needs",
+        label: "需進一步評估",
+        text: "依目前填答資訊，尚不確定是否符合免評估條件。一般情況下，需先至醫院由專科醫師進行「巴氏量表」評估，經評估總分 35 分（含）以下並開立診斷證明後，才符合申請外籍家庭看護工資格。"
+      };
+    } else {
+      caregiverResult = {
+        status: "needs",
+        label: "需進一步評估",
+        text: "目前資訊尚不足以判斷照顧需求程度，建議先至照管中心或醫院進行評估，確認是否符合長期照顧之身心失能者資格。"
+      };
+    }
+
+    // 2. 巴氏量表是否可能免評估
+    var barthelResult;
+    if (isIndependent) {
+      barthelResult = {
+        status: "unlikely",
+        label: "暫不適用",
+        text: "家人目前大致可自理，暫無巴氏量表評估之適用情境。"
+      };
+    } else if (a.age === "80plus" && isDependent) {
+      barthelResult = {
+        status: "likely",
+        label: "可能免評估",
+        text: "80 歲以上且有照顧需求者，可能符合免經醫療機構專業評估（含巴氏量表）之條件，改由照管中心評估後銜接申請。"
+      };
+    } else if (a.dementia === "moderate_severe" && isDependent) {
+      barthelResult = {
+        status: "likely",
+        label: "可能免評估",
+        text: "中度以上失智症者，可能可憑專科醫師診斷證明取代巴氏量表評估。"
+      };
+    } else if (a.cms === "yes" && isDependent) {
+      barthelResult = {
+        status: "likely",
+        label: "可能免評估",
+        text: "已有照管中心 CMS 評估紀錄，可能可作為巴氏量表以外的替代評估依據。"
+      };
+    } else {
+      barthelResult = {
+        status: "needs",
+        label: "可能需要評估",
+        text: "依填答資訊，較可能仍需至醫院由專科醫師進行巴氏量表評估，作為申請外籍看護工的資格依據。"
+      };
+    }
+
+    // 3. 住宿式機構補助
+    var institutionResult;
+    if (a.economic === "low_income") {
+      institutionResult = {
+        status: "likely",
+        label: "可能性較高",
+        text: "屬低收入戶者，入住住宿式長照機構時，符合公費安置或全額 / 高額補助的可能性較高，建議直接洽戶籍地公所社會局（處）及長照中心確認可申請項目。"
+      };
+    } else if (a.economic === "mid_low_income") {
+      institutionResult = {
+        status: "likely",
+        label: "可能性中高",
+        text: "屬中低收入戶者，入住住宿式長照機構通常有機會取得一定比例補助，實際補助額度依當年度地方政府公告方案而定，建議洽戶籍地公所或長照中心確認最新資格與金額。"
+      };
+    } else if (a.economic === "general" && (isDependent || a.cms === "yes")) {
+      institutionResult = {
+        status: "needs",
+        label: "需視地方方案而定",
+        text: "屬一般戶但有照顧需求或 CMS 評估紀錄者，部分縣市對特定 CMS 等級提供床位費或服務費補助，但多數費用仍需自行負擔，且各縣市方案每年可能調整，建議洽當地長照中心或社會局確認最新公告。"
+      };
+    } else if (a.economic === "general") {
+      institutionResult = {
+        status: "unlikely",
+        label: "可能性較低",
+        text: "屬一般戶且目前照顧需求尚未明確，符合機構補助的可能性較低，機構費用可能需全額自付，但仍建議洽詢機構了解服務內容與收費。"
+      };
+    } else {
+      institutionResult = {
+        status: "needs",
+        label: "需先確認資格",
+        text: "尚不確定家庭經濟身分，建議先向戶籍地公所確認是否符合低收入戶 / 中低收入戶資格，再洽長照中心了解可申請的補助項目。"
+      };
+    }
+
+    return { caregiverResult: caregiverResult, barthelResult: barthelResult, institutionResult: institutionResult, isDependent: isDependent, isMostlyIndependent: isMostlyIndependent };
+  }
+
+  function buildDocuments(a, r) {
+    var docs = [];
+    docs.push("受照顧者身分證正反面影本");
+    docs.push("申請人（家屬）身分證正反面影本及與受照顧者之關係證明（如戶口名簿）");
+
+    if (a.cms !== "yes") {
+      docs.push("向長期照顧管理中心申請 CMS 需求評估之相關表單");
+    }
+    if (r.barthelResult.status === "needs") {
+      docs.push("醫院開立之「巴氏量表」評估表及專科醫師診斷證明書");
+    }
+    if (a.dementia === "moderate_severe") {
+      docs.push("失智症診斷證明書（載明 CDR 分數或嚴重程度）");
+    }
+    if (a.disability === "cert") {
+      docs.push("身心障礙證明影本");
+    }
+    if (a.disability === "illness_card") {
+      docs.push("重大傷病卡影本");
+    }
+    if (a.economic === "low_income" || a.economic === "mid_low_income") {
+      docs.push("低收入戶 / 中低收入戶證明（向戶籍地公所申請）");
+    }
+    if (a.preference === "foreign_caregiver" || a.preference === "both") {
+      docs.push("外國人聘僱許可申請書（向勞動部勞動力發展署提出）");
+      docs.push("聘僱看護工切結書及相關聘僱契約文件");
+    }
+    if (a.preference === "institution" || a.preference === "both") {
+      docs.push("擬入住機構之評估與入住申請表（向機構索取）");
+    }
+    docs.push("近期一吋照片數張（依各申請項目規定備用）");
+    return docs;
+  }
+
+  function buildSteps(a, r) {
+    var steps = [];
+    steps.push({
+      title: "聯繫戶籍地「長期照顧管理中心」（照管中心）",
+      detail: "撥打長照專線 1966，或至" + (a.county || "所在") + "長期照顧管理中心，安排 CMS 需求評估與長照服務諮詢，這通常是後續申請的第一步。"
+    });
+    if (r.barthelResult.status === "needs") {
+      steps.push({
+        title: "至醫院安排巴氏量表評估",
+        detail: "攜帶健保卡及相關病歷資料，至醫院由專科醫師進行巴氏量表評估及開立診斷證明書。"
+      });
+    }
+    if (a.preference === "foreign_caregiver" || a.preference === "both") {
+      steps.push({
+        title: "洽勞動部勞動力發展署辦理外籍看護工申請",
+        detail: "取得資格文件後，向勞動部勞動力發展署所屬各分署提出申請，並委託合法仲介或自行辦理跨國聘僱作業。"
+      });
+    }
+    if (a.economic === "low_income" || a.economic === "mid_low_income") {
+      steps.push({
+        title: "向戶籍地公所確認低收 / 中低收入戶資格",
+        detail: "備妥財力證明文件，向戶籍地公所申請低收入戶或中低收入戶證明，作為補助申請依據。"
+      });
+    }
+    if (a.preference === "institution" || a.preference === "both") {
+      steps.push({
+        title: "洽詢住宿式長照機構及地方社會局",
+        detail: "選定合法立案之住宿式長照機構，並向地方政府社會局（處）確認當年度可申請之床位費或服務費補助方案。"
+      });
+    }
+    steps.push({
+      title: "保留所有文件副本並建立申請時間表",
+      detail: "建議將上述文件掃描留存，並記錄各單位承辦人聯絡方式，以利後續追蹤進度。"
+    });
+    return steps;
+  }
+
+  function statusClass(status) {
+    if (status === "likely") return "status-likely";
+    if (status === "needs") return "status-needs";
+    return "status-unlikely";
+  }
+
+  function showResults() {
+    var r = computeResults(answers);
+    var cardsContainer = document.getElementById("resultCards");
+    cardsContainer.innerHTML = "";
+
+    var items = [
+      { title: "🧑‍🤝‍🧑 外籍家庭看護工申請資格", r: r.caregiverResult },
+      { title: "📄 巴氏量表是否可能免評估", r: r.barthelResult },
+      { title: "🏥 住宿式機構補助可能性", r: r.institutionResult }
+    ];
+
+    items.forEach(function (item) {
+      var div = document.createElement("div");
+      div.className = "result-card " + statusClass(item.r.status);
+      div.innerHTML =
+        '<div class="result-title">' + item.title +
+        '<span class="status-pill">' + item.r.label + '</span></div>' +
+        '<div class="result-desc">' + item.r.text + '</div>';
+      cardsContainer.appendChild(div);
+    });
+
+    var docList = document.getElementById("docList");
+    docList.innerHTML = "";
+    buildDocuments(answers, r).forEach(function (d) {
+      var li = document.createElement("li");
+      li.textContent = d;
+      docList.appendChild(li);
+    });
+
+    var stepList = document.getElementById("stepList");
+    stepList.innerHTML = "";
+    buildSteps(answers, r).forEach(function (s, idx) {
+      var li = document.createElement("li");
+      var num = document.createElement("div");
+      num.className = "step-num";
+      num.textContent = idx + 1;
+      var textWrap = document.createElement("div");
+      textWrap.innerHTML = "<b>" + s.title + "</b><br/><span style='color:var(--text-muted);font-size:13px;'>" + s.detail + "</span>";
+      li.appendChild(num);
+      li.appendChild(textWrap);
+      stepList.appendChild(li);
+    });
+
+    quizSection.hidden = true;
+    resultSection.hidden = false;
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  document.getElementById("printBtn").addEventListener("click", function () {
+    window.print();
+  });
+
+  document.getElementById("restartBtn").addEventListener("click", function () {
+    answers = {};
+    currentIndex = 0;
+    resultSection.hidden = true;
+    heroSection.hidden = false;
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+})();
+</script>
+</body>
+</html>
