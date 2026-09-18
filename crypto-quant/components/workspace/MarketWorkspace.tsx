@@ -5,11 +5,13 @@ import { useKlines, useSymbols } from "@/lib/client/hooks";
 import { CandlestickChart } from "@/components/charts/CandlestickChart";
 import { RsiPanel } from "@/components/charts/RsiPanel";
 import { MacdPanel } from "@/components/charts/MacdPanel";
+import { TradingViewWidget } from "@/components/charts/TradingViewWidget";
 import { LoadingState, ErrorState, EmptyState } from "@/components/common/StatusStates";
 import { DataSourceBadge } from "@/components/common/DataSourceBadge";
 import { SignalBadge } from "@/components/common/SignalBadge";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Select } from "@/components/ui/Field";
+import { Tabs } from "@/components/ui/Tabs";
 import { ema, macd as macdFn, rsi as rsiFn, bollinger } from "@/lib/indicators";
 import { strategyRegistry, type StrategyId } from "@/lib/strategies/registry";
 import { INTERVAL_LABEL, SUPPORTED_INTERVALS, type Interval } from "@/lib/market/symbols";
@@ -158,16 +160,39 @@ export function MarketWorkspace({
         {!isLoading && !isError && !data?.unavailable && candles.length === 0 && (
           <EmptyState message="所選區間內查無資料" />
         )}
-        {!isLoading && !isError && candles.length > 0 && (
-          <>
-            <CandlestickChart candles={candles} overlays={overlays} signals={showSignals ? signals : []} height={compact ? 260 : 360} />
-            {!compact && (
-              <div className="mt-2 space-y-2">
-                <RsiPanel data={rsiSeries} />
-                <MacdPanel data={macdSeries} />
-              </div>
-            )}
-          </>
+        {!isLoading && !isError && candles.length > 0 && compact && (
+          <CandlestickChart candles={candles} overlays={overlays} signals={showSignals ? signals : []} height={260} />
+        )}
+        {!isLoading && !isError && candles.length > 0 && !compact && (
+          <Tabs
+            tabs={[
+              {
+                id: "own",
+                label: "本站圖表（含策略訊號）",
+                content: (
+                  <>
+                    <CandlestickChart candles={candles} overlays={overlays} signals={showSignals ? signals : []} height={360} />
+                    <div className="mt-2 space-y-2">
+                      <RsiPanel data={rsiSeries} />
+                      <MacdPanel data={macdSeries} />
+                    </div>
+                  </>
+                ),
+              },
+              {
+                id: "tradingview",
+                label: "TradingView 圖表",
+                content: (
+                  <div className="flex flex-col gap-2">
+                    <p className="text-xs text-[var(--color-text-muted)]">
+                      此圖表由 TradingView 官方 Widget 提供（{symbol.replace("USDT", "")}/USDT，幣安現貨），僅供對照參考；資料來源與更新時間可能與本站策略分析所用資料略有差異，不會顯示本站策略訊號。
+                    </p>
+                    <TradingViewWidget symbol={symbol} interval={interval} height={540} />
+                  </div>
+                ),
+              },
+            ]}
+          />
         )}
       </Card>
 

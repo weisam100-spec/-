@@ -108,6 +108,17 @@ npm run build
 npm run start
 ```
 
+## TradingView 圖表整合
+
+行情與技術圖表頁（`/market`，以及首頁的策略分析工作區完整版）在圖表上方提供兩個分頁：
+
+- **本站圖表（含策略訊號）**：以 `lightweight-charts` 繪製，疊加本站計算的 EMA/RSI/MACD 與策略訊號標記
+- **TradingView 圖表**：嵌入 [TradingView 官方免費 Advanced Chart Widget](https://www.tradingview.com/widget/advanced-chart/)（`components/charts/TradingViewWidget.tsx`），對照參考用，不會顯示本站策略訊號，資料來源與更新時間可能與本站略有差異
+
+實作方式是動態載入 TradingView 官方腳本 `https://s3.tradingview.com/tv.js` 並以 `BINANCE:<symbol>` 格式建立 widget，**不需要任何 API 金鑰**，僅使用其公開免費的嵌入元件。`next.config.ts` 的 CSP 已額外放行 `s3.tradingview.com` / `static.tradingview.com`（script-src）、`*.tradingview.com`（connect-src / img-src）與 `www.tradingview.com`、`s.tradingview.com`（frame-src），其餘資源仍維持僅限本站的嚴格政策。若 TradingView 資源載入失敗（例如網路無法連線到 tradingview.com），畫面會顯示友善的錯誤提示，不會讓頁面壞掉或空白。
+
+> 本次開發沙箱環境同樣封鎖了對 tradingview.com 的對外連線，因此僅能確認元件程式碼正確載入腳本、CSP 設定正確放行、並在連線失敗時正確顯示錯誤狀態；實際圖表渲染畫面請在你自己可連外網的機器上確認。
+
 ## 如何切換資料來源
 
 在 `.env.local` 設定：
@@ -190,6 +201,7 @@ crypto-quant/
 - 策略設定可儲存、重新命名、複製、刪除（二次確認）、重新載入，以匿名工作區（cookie）區分使用者
 - 觀察清單與模擬（紙上）投資組合（含已實現／未實現損益），真實交易功能維持停用並清楚標示尚未開放
 - 首頁與回測結果頁醒目風險聲明；小樣本、回測期過短、最大回撤過高時顯示風險警告
+- 行情頁整合 TradingView 官方免費圖表 Widget（與本站自製策略圖表並列分頁切換），CSP 已針對性放行所需網域
 - API 輸入白名單驗證（zod）、速率限制、回測資料量與逾時上限、CSP／安全標頭、不使用 `eval`
 - 52 項單元測試／整合測試全數通過；ESLint、`tsc --noEmit`、`next build`（正式建置）皆執行成功並修正所有錯誤
 - 以 Playwright 實際啟動應用程式並操作：首頁 → 策略設定頁 → 執行回測 → 查看回測結果 → 執行敏感度分析／walk-forward → 策略比較 → 觀察清單新增 → 模擬投資組合下單，全流程無主控台錯誤、無 HTTP 4xx/5xx；同時驗證手機（390px）與桌機寬度下的響應式版面
