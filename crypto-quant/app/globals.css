@@ -1,0 +1,51 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg: #0a0e14;
+  --color-surface: #10161f;
+  --color-surface-raised: #161d29;
+  --color-border: #232b38;
+  --color-text: #e6e9ef;
+  --color-text-muted: #8a93a3;
+  --color-up: #16c784;
+  --color-up-soft: #0f3d2e;
+  --color-down: #ea3943;
+  --color-down-soft: #401419;
+  --color-accent: #3b82f6;
+  --color-accent-soft: #14233f;
+  --color-warn: #f2a900;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family:
+    "Noto Sans TC", ui-sans-serif, system-ui, -apple-system, "PingFang TC",
+    "Microsoft JhengHei", sans-serif;
+}
+
+::selection {
+  background: var(--color-accent);
+  color: white;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 4px;
+}
+
+/* 漲跌不只依賴顏色：搭配文字與正負號使用，這裡僅提供輔助樣式 */
+.pos {
+  color: var(--color-up);
+}
+.neg {
+  color: var(--color-down);
+}
