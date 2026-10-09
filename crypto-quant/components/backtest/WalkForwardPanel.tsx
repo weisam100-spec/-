@@ -14,6 +14,7 @@ const STRATEGY_GRID_KEY: Record<string, string> = {
   "macd-trend": "fastPeriod",
   "multi-factor": "scoreThreshold",
   smc: "swingLookback",
+  smt: "swingLookback",
 };
 
 function parseValues(input: string): number[] {

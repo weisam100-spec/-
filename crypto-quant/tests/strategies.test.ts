@@ -4,7 +4,8 @@ import { rsiMeanReversionStrategy } from "@/lib/strategies/rsiMeanReversion";
 import { macdTrendStrategy } from "@/lib/strategies/macdTrend";
 import { multiFactorStrategy, validateWeights, multiFactorDefaultWeights } from "@/lib/strategies/multiFactor";
 import { smcStrategy } from "@/lib/strategies/smc";
-import { buildSampleCandles, buildSmcScenarioCandles } from "./fixtures/sampleCandles";
+import { smtStrategy } from "@/lib/strategies/smt";
+import { buildSampleCandles, buildSmcScenarioCandles, buildSmtScenarioCandles } from "./fixtures/sampleCandles";
 
 const ctx = { symbol: "BTCUSDT", interval: "1h" as const };
 
@@ -185,5 +186,64 @@ describe("smcStrategy", () => {
       expect(s.confidence).toBeGreaterThanOrEqual(0);
       expect(s.confidence).toBeLessThanOrEqual(100);
     }
+  });
+});
+
+describe("smtStrategy", () => {
+  const smtParams = { correlatedSymbol: "ETHUSDT", swingLookback: 2, maxMatchBars: 3 };
+  const smtCtxFor = (correlated: ReturnType<typeof buildSmtScenarioCandles>["correlated"]) => ({
+    symbol: "BTCUSDT" as const,
+    interval: "1h" as const,
+    correlatedCandles: correlated,
+    correlatedSymbol: "ETHUSDT",
+  });
+
+  it("比較交易對必須是支援清單中的交易對", () => {
+    const result = smtStrategy.validateParams({ ...smtParams, correlatedSymbol: "NOTREAL" });
+    expect(result.valid).toBe(false);
+  });
+
+  it("預設參數驗證通過", () => {
+    const result = smtStrategy.validateParams(smtStrategy.defaultParams);
+    expect(result.valid).toBe(true);
+  });
+
+  it("缺少比較交易對資料時回傳空陣列，絕不假造訊號", () => {
+    const { primary } = buildSmtScenarioCandles();
+    const signals = smtStrategy.generateSignals(primary, smtParams, { symbol: "BTCUSDT", interval: "1h" });
+    expect(signals).toEqual([]);
+  });
+
+  it("主要資產創高但比較資產未同步創高時，應觸發偏空候選訊號（頂背離）", () => {
+    const { primary, correlated } = buildSmtScenarioCandles();
+    const signals = smtStrategy.generateSignals(primary, smtParams, smtCtxFor(correlated));
+    expect(signals.length).toBeGreaterThanOrEqual(1);
+    const signal = signals[0]!;
+    expect(signal.type).toBe("bearish_candidate");
+    expect(signal.reason).toContain("SMT");
+    expect(signal.reason).toContain("ETHUSDT");
+    const openTimes = new Set(primary.map((c) => c.openTime));
+    expect(openTimes.has(signal.time)).toBe(true);
+  });
+
+  it("只用訊號當根（含）之前的主要與比較資料時，產生的訊號必須與完整資料一致（無未來函數）", () => {
+    const { primary, correlated } = buildSmtScenarioCandles();
+    const fullSignals = smtStrategy.generateSignals(primary, smtParams, smtCtxFor(correlated));
+    expect(fullSignals.length).toBeGreaterThanOrEqual(1);
+    const signalTime = fullSignals[0]!.time;
+    const cutoffIndex = primary.findIndex((c) => c.openTime === signalTime);
+
+    const truncatedPrimary = primary.slice(0, cutoffIndex + 1);
+    const truncatedCorrelated = correlated.slice(0, cutoffIndex + 1);
+    const truncatedSignals = smtStrategy.generateSignals(truncatedPrimary, smtParams, smtCtxFor(truncatedCorrelated));
+
+    const fullSignalsWithinCutoff = fullSignals.filter((s) => s.time <= signalTime);
+    expect(truncatedSignals).toEqual(fullSignalsWithinCutoff);
+  });
+
+  it("主要交易對與比較交易對相同時不產生訊號", () => {
+    const { primary, correlated } = buildSmtScenarioCandles();
+    const signals = smtStrategy.generateSignals(primary, { ...smtParams, correlatedSymbol: "BTCUSDT" }, smtCtxFor(correlated));
+    expect(signals).toEqual([]);
   });
 });

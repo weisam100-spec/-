@@ -11,7 +11,7 @@ import { BacktestConfigForm } from "@/components/strategy/BacktestConfigForm";
 import { SavedConfigsPanel } from "@/components/strategy/SavedConfigsPanel";
 import { useCreateStrategyConfig, useRunBacktest, useSymbols } from "@/lib/client/hooks";
 import { useResultStore } from "@/lib/client/resultStore";
-import { strategyRegistry, type StrategyId } from "@/lib/strategies/registry";
+import { strategyRegistry, requiresCorrelatedAsset, type StrategyId } from "@/lib/strategies/registry";
 import { SUPPORTED_INTERVALS, INTERVAL_LABEL, type Interval } from "@/lib/market/symbols";
 import { defaultBacktestConfig, type BacktestConfig } from "@/lib/backtest/types";
 import type { StrategyConfigRecord } from "@/lib/storage/strategyConfigRepo";
@@ -38,11 +38,22 @@ export default function StrategyPage() {
   const createConfigMutation = useCreateStrategyConfig();
   const setLastBacktest = useResultStore((s) => s.setLastBacktest);
 
-  const validation = useMemo(() => strategyRegistry[strategyId].validateParams(params as never), [strategyId, params]);
+  const validation = useMemo(() => {
+    const base = strategyRegistry[strategyId].validateParams(params as never);
+    if (requiresCorrelatedAsset(strategyId) && params.correlatedSymbol === symbol) {
+      return { valid: false, errors: [...base.errors, "比較交易對不可與主要交易對相同"] };
+    }
+    return base;
+  }, [strategyId, params, symbol]);
 
   const handleStrategyChange = (id: StrategyId) => {
     setStrategyId(id);
-    setParams({ ...strategyRegistry[id].defaultParams });
+    const defaults = { ...strategyRegistry[id].defaultParams } as Record<string, unknown>;
+    if (requiresCorrelatedAsset(id) && defaults.correlatedSymbol === symbol) {
+      const fallback = (symbolsData?.symbols ?? []).find((s) => s.symbol !== symbol);
+      if (fallback) defaults.correlatedSymbol = fallback.symbol;
+    }
+    setParams(defaults);
   };
 
   const handleLoad = (c: StrategyConfigRecord) => {
@@ -115,7 +126,7 @@ export default function StrategyPage() {
         </Card>
 
         <Card>
-          <StrategyParamsForm strategyId={strategyId} params={params} onChange={setParams} errors={validation.errors} />
+          <StrategyParamsForm strategyId={strategyId} symbol={symbol} params={params} onChange={setParams} errors={validation.errors} />
         </Card>
 
         <Card>

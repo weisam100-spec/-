@@ -4,6 +4,7 @@ import { withRateLimit } from "@/lib/api/withRateLimit";
 import { backtestConfigSchema, intervalSchema, strategyIdSchema, symbolSchema } from "@/lib/api/backtestSchema";
 import { env } from "@/lib/env";
 import { fetchKlinesRange } from "@/lib/market/klinesRange";
+import { fetchCorrelatedCandles } from "@/lib/market/strategyData";
 import { runStrategyBacktest } from "@/lib/backtest/runPipeline";
 import type { StrategyId } from "@/lib/strategies/registry";
 import type { Interval } from "@/lib/market/symbols";
@@ -51,32 +52,55 @@ export const POST = withRateLimit(async (request) => {
     return apiError("所選日期區間內查無資料，請調整日期範圍", 404, "no_data");
   }
 
-  const comparisons = strategies.map((s) => {
-    try {
-      const output = runStrategyBacktest({
-        symbol,
-        interval: interval as Interval,
-        candles: klinesResult.candles,
-        strategyId: s.strategyId as StrategyId,
-        strategyParams: s.strategyParams,
-        config,
-      });
-      return {
-        strategyId: s.strategyId,
-        label: s.label ?? s.strategyId,
-        ok: true as const,
-        metrics: output.metrics,
-        warnings: [...output.result.warnings, ...output.warnings],
-      };
-    } catch (err) {
-      return {
-        strategyId: s.strategyId,
-        label: s.label ?? s.strategyId,
-        ok: false as const,
-        error: err instanceof Error ? err.message : "回測失敗",
-      };
-    }
-  });
+  // 大部分策略共用同一份主要交易對資料（已於上方抓取一次）；
+  // 少數需要跨資產比較的策略（如 SMT）會依各自參數再抓一份比較交易對資料。
+  const comparisons = await Promise.all(
+    strategies.map(async (s) => {
+      try {
+        const correlated = await fetchCorrelatedCandles({
+          strategyId: s.strategyId as StrategyId,
+          symbol,
+          interval: interval as Interval,
+          strategyParams: s.strategyParams,
+          startTime: config.startTime,
+          endTime: config.endTime,
+          maxBars: env.backtestMaxBars,
+        });
+        if (correlated?.unavailable) {
+          return {
+            strategyId: s.strategyId,
+            label: s.label ?? s.strategyId,
+            ok: false as const,
+            error: `目前無法取得比較交易對資料：${correlated.unavailable.reason}`,
+          };
+        }
+
+        const output = runStrategyBacktest({
+          symbol,
+          interval: interval as Interval,
+          candles: klinesResult.candles,
+          strategyId: s.strategyId as StrategyId,
+          strategyParams: s.strategyParams,
+          config,
+          correlatedCandles: correlated?.candles,
+        });
+        return {
+          strategyId: s.strategyId,
+          label: s.label ?? s.strategyId,
+          ok: true as const,
+          metrics: output.metrics,
+          warnings: [...output.result.warnings, ...output.warnings],
+        };
+      } catch (err) {
+        return {
+          strategyId: s.strategyId,
+          label: s.label ?? s.strategyId,
+          ok: false as const,
+          error: err instanceof Error ? err.message : "回測失敗",
+        };
+      }
+    }),
+  );
 
   return apiOk({
     dataSource: klinesResult.source,

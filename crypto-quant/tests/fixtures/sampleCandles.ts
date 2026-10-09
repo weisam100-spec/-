@@ -82,6 +82,50 @@ export function buildSmcScenarioCandles(startTime = 1_700_000_000_000, stepMs = 
   return candles;
 }
 
+function buildCandlesFromCloses(closes: number[], startTime: number, stepMs: number): Candle[] {
+  const candles: Candle[] = [];
+  let prevClose = closes[0]! + 1;
+  let t = startTime;
+  for (const close of closes) {
+    const open = prevClose;
+    const high = Math.max(open, close) + 0.1;
+    const low = Math.min(open, close) - 0.1;
+    candles.push({ openTime: t, open, high, low, close, volume: 1000, closed: true });
+    prevClose = close;
+    t += stepMs;
+  }
+  return candles;
+}
+
+/**
+ * 專為 SMT（跨資產背離）策略設計的一對情境資料：兩條序列時間戳完全對齊（同一 startTime/stepMs）。
+ * 主要資產（模擬 BTC）兩次波段高點皆持續創高（符合多頭動能延續）；
+ * 比較資產（模擬 ETH）第一次波段高點同步創高，但第二次高點卻低於第一次（未同步創高），
+ * 構成 SMT 頂背離，應在主要資產序列的第二個高點處（idx12）觸發一個偏空候選訊號。
+ * 使用 swingLookback=2 以便在小筆資料內即可成立。
+ */
+export function buildSmtScenarioCandles(
+  startTime = 1_700_000_000_000,
+  stepMs = 3_600_000,
+): { primary: Candle[]; correlated: Candle[] } {
+  const primaryCloses = [
+    100, 101, 102, 101, 100, // 波段高點 1 = 102（idx2）
+    99, 98, 97, 98, 99, // 波段低點（idx7）
+    100, 101, 103, 102, 101, // 波段高點 2 = 103（idx12，高於高點 1，延續創高）
+    100, 99, 98, // 收尾
+  ];
+  const correlatedCloses = [
+    50, 51, 52, 51, 50, // 波段高點 1 = 52（idx2，與主要資產同步創高）
+    49, 48, 47, 48, 49, // 波段低點（idx7）
+    50, 50.8, 51.5, 51, 50.3, // 波段高點 2 = 51.5（idx12，低於高點 1，未同步創高 -> 背離）
+    50, 49.5, 49, // 收尾
+  ];
+  return {
+    primary: buildCandlesFromCloses(primaryCloses, startTime, stepMs),
+    correlated: buildCandlesFromCloses(correlatedCloses, startTime, stepMs),
+  };
+}
+
 /** 含有缺漏（跳過一根）與重複時間戳的資料，供資料清理測試使用 */
 export function buildFlawedCandles(): Candle[] {
   const base = buildSampleCandles().slice(0, 20);

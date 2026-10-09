@@ -29,7 +29,7 @@ describe("GET /api/strategies", () => {
     const res = await getStrategies(new Request("http://localhost/api/strategies") as never, undefined as never);
     const json = await res.json();
     expect(json.ok).toBe(true);
-    expect(json.data.strategies.length).toBe(5);
+    expect(json.data.strategies.length).toBe(6);
   });
 });
 
@@ -148,5 +148,67 @@ describe("POST /api/backtest/run", () => {
       undefined as never,
     );
     expect(res.status).toBe(400);
+  });
+
+  it("SMT 策略可成功抓取主要與比較交易對資料並執行回測", async () => {
+    const now = Date.now();
+    const startTime = now - 60 * 24 * 60 * 60 * 1000;
+    const res = await POST(
+      makeRequest({
+        symbol: "BTCUSDT",
+        interval: "1h",
+        strategyId: "smt",
+        strategyParams: { correlatedSymbol: "ETHUSDT", swingLookback: 5, maxMatchBars: 3 },
+        config: {
+          initialCapitalUsdt: 100000,
+          positionSizePct: 100,
+          feeRatePct: 0.1,
+          slippageRatePct: 0.05,
+          stopLossPct: null,
+          takeProfitPct: null,
+          trailingStopPct: null,
+          maxConcurrentPositions: 1,
+          direction: "long_only",
+          startTime,
+          endTime: now,
+        },
+      }) as never,
+      undefined as never,
+    );
+    const json = await res.json();
+    expect(res.status).toBe(200);
+    expect(json.ok).toBe(true);
+    expect(json.data.metrics).toBeDefined();
+  });
+
+  it("SMT 策略比較交易對與主要交易對相同時回傳明確錯誤，而非忽略或假造資料", async () => {
+    const now = Date.now();
+    const startTime = now - 60 * 24 * 60 * 60 * 1000;
+    const res = await POST(
+      makeRequest({
+        symbol: "BTCUSDT",
+        interval: "1h",
+        strategyId: "smt",
+        strategyParams: { correlatedSymbol: "BTCUSDT", swingLookback: 5, maxMatchBars: 3 },
+        config: {
+          initialCapitalUsdt: 100000,
+          positionSizePct: 100,
+          feeRatePct: 0.1,
+          slippageRatePct: 0.05,
+          stopLossPct: null,
+          takeProfitPct: null,
+          trailingStopPct: null,
+          maxConcurrentPositions: 1,
+          direction: "long_only",
+          startTime,
+          endTime: now,
+        },
+      }) as never,
+      undefined as never,
+    );
+    expect(res.status).toBe(502);
+    const json = await res.json();
+    expect(json.ok).toBe(false);
+    expect(json.error.message).toContain("比較交易對");
   });
 });

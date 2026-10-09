@@ -46,6 +46,13 @@ export interface ParamValidationResult {
 export interface StrategyContext {
   symbol: string;
   interval: Interval;
+  /**
+   * 部分策略（例如 SMT 背離）需要同時比較另一個交易對的同週期 K 線。
+   * 一般策略不會用到此欄位。資料來源與主要 candles 一樣皆為真實標準化 OHLCV，
+   * 不會是假資料；若比對交易對資料無法取得，呼叫端應回報明確錯誤，不應留空讓策略誤判。
+   */
+  correlatedCandles?: Candle[];
+  correlatedSymbol?: string;
 }
 
 export interface Strategy<P extends Record<string, unknown>> {
@@ -53,10 +60,13 @@ export interface Strategy<P extends Record<string, unknown>> {
   name: string;
   description: string;
   defaultParams: P;
+  /** 是否需要 ctx.correlatedCandles（例如跨資產背離策略）。呼叫端需依此額外抓取第二組 K 線。 */
+  requiresCorrelatedAsset?: boolean;
   validateParams(params: P): ParamValidationResult;
   /**
    * 產生訊號。實作時只能使用 candles[0..i]（含）的資料計算第 i 根的訊號，
-   * 不得使用未來資料（防止未來函數）。
+   * 不得使用未來資料（防止未來函數）；若使用 ctx.correlatedCandles，同樣只能使用
+   * 時間點 <= 當下 K 棒的部分。
    */
   generateSignals(candles: Candle[], params: P, ctx: StrategyContext): StrategySignal[];
 }

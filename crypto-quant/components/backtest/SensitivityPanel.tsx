@@ -30,6 +30,10 @@ const STRATEGY_AXIS_OPTIONS: Record<string, { key: string; label: string }[]> = 
     { key: "swingLookback", label: "擺動點確認根數" },
     { key: "minDisplacementMultiple", label: "突破動能倍數" },
   ],
+  smt: [
+    { key: "swingLookback", label: "擺動點確認根數" },
+    { key: "maxMatchBars", label: "擺動點同步容許根數" },
+  ],
 };
 
 const CONFIG_AXIS_OPTIONS = [

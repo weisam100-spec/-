@@ -13,7 +13,7 @@ import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Select } from "@/components/ui/Field";
 import { Tabs } from "@/components/ui/Tabs";
 import { ema, macd as macdFn, rsi as rsiFn, bollinger } from "@/lib/indicators";
-import { strategyRegistry, type StrategyId } from "@/lib/strategies/registry";
+import { strategyRegistry, requiresCorrelatedAsset, type StrategyId } from "@/lib/strategies/registry";
 import { INTERVAL_LABEL, SUPPORTED_INTERVALS, type Interval } from "@/lib/market/symbols";
 import { formatDateTime, formatUsdt } from "@/lib/format";
 
@@ -47,15 +47,17 @@ export function MarketWorkspace({
     return { emaShort, emaLong, rsiValues, macdLine, signal, histogram, upper, lower };
   }, [candles]);
 
+  const strategyNeedsCorrelatedAsset = requiresCorrelatedAsset(strategyId);
+
   const signals = useMemo(() => {
-    if (candles.length === 0) return [];
+    if (candles.length === 0 || strategyNeedsCorrelatedAsset) return [];
     const strategy = strategyRegistry[strategyId];
     try {
       return strategy.generateSignals(candles, strategy.defaultParams as never, { symbol, interval });
     } catch {
       return [];
     }
-  }, [candles, strategyId, symbol, interval]);
+  }, [candles, strategyId, symbol, interval, strategyNeedsCorrelatedAsset]);
 
   const overlays = useMemo(() => {
     if (!indicators) return [];
@@ -200,7 +202,12 @@ export function MarketWorkspace({
         <CardHeader>
           <CardTitle>最新策略訊號</CardTitle>
         </CardHeader>
-        {recentSignals.length === 0 ? (
+        {strategyNeedsCorrelatedAsset ? (
+          <EmptyState
+            message="此策略需同時比較兩個交易對，行情頁即時預覽不支援"
+            hint="請至「策略設定頁」設定比較交易對後執行回測，即可看到完整訊號"
+          />
+        ) : recentSignals.length === 0 ? (
           <EmptyState message="目前沒有符合條件的訊號" hint="調整策略或週期後再試" />
         ) : (
           <ul className="flex flex-col gap-2">

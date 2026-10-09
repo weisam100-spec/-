@@ -1,9 +1,10 @@
 "use client";
 
-import { Field, TextInput, Checkbox } from "@/components/ui/Field";
+import { Field, TextInput, Checkbox, Select } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
 import { strategyRegistry, type StrategyId } from "@/lib/strategies/registry";
 import { multiFactorDefaultWeights, type MultiFactorWeights } from "@/lib/strategies/multiFactor";
+import { useSymbols } from "@/lib/client/hooks";
 
 type Params = Record<string, unknown>;
 
@@ -17,11 +18,14 @@ function bool(params: Params, key: string): boolean {
 
 export function StrategyParamsForm({
   strategyId,
+  symbol,
   params,
   onChange,
   errors,
 }: {
   strategyId: StrategyId;
+  /** 使用者目前選擇的主要交易對，用於跨資產策略排除重複選到同一個交易對 */
+  symbol: string;
   params: Params;
   onChange: (next: Params) => void;
   errors: string[];
@@ -104,6 +108,8 @@ export function StrategyParamsForm({
         </>
       )}
 
+      {strategyId === "smt" && <SmtForm symbol={symbol} params={params} onChange={onChange} />}
+
       {errors.length > 0 && (
         <div className="rounded-md border border-[var(--color-down)]/40 bg-[var(--color-down-soft)]/40 p-2 text-xs text-[var(--color-down)]">
           <ul className="list-disc pl-4">
@@ -167,6 +173,37 @@ function MultiFactorForm({ params, onChange }: { params: Params; onChange: (next
           value={num(params, "riskVolatilityMultiple")}
           onChange={(e) => onChange({ ...params, riskVolatilityMultiple: Number(e.target.value) })}
         />
+      </Field>
+    </>
+  );
+}
+
+function SmtForm({ symbol, params, onChange }: { symbol: string; params: Params; onChange: (next: Params) => void }) {
+  const { data: symbolsData } = useSymbols();
+  const correlatedSymbol = typeof params.correlatedSymbol === "string" ? params.correlatedSymbol : "";
+  const sameAsSymbol = correlatedSymbol !== "" && correlatedSymbol === symbol;
+
+  return (
+    <>
+      <div className="rounded-md border border-[var(--color-warn)]/30 bg-[var(--color-warn)]/5 p-2 text-xs text-[var(--color-text-muted)]">
+        SMT 背離策略需要同時讀取「主要交易對」與「比較交易對」兩組 K 線，僅在策略設定頁執行回測時會抓取比較交易對資料；行情頁的即時圖表預覽不會顯示此策略的訊號標記。
+      </div>
+      <Field label="比較交易對" hint="用來檢查是否同步創高/創低的另一個交易對，須與主要交易對不同">
+        <Select value={correlatedSymbol} onChange={(e) => onChange({ ...params, correlatedSymbol: e.target.value })}>
+          {(symbolsData?.symbols ?? []).map((s) => (
+            <option key={s.symbol} value={s.symbol} disabled={s.symbol === symbol}>
+              {s.displayName}
+              {s.symbol === symbol ? "（與主要交易對相同，不可選）" : ""}
+            </option>
+          ))}
+        </Select>
+      </Field>
+      {sameAsSymbol && <p className="text-xs text-[var(--color-down)]">比較交易對不可與主要交易對相同，請重新選擇。</p>}
+      <Field label="擺動點確認根數" hint="判斷波段高低點時，左右各需要幾根 K 棒才確認">
+        <TextInput type="number" min={2} max={50} value={num(params, "swingLookback")} onChange={(e) => onChange({ ...params, swingLookback: Number(e.target.value) })} />
+      </Field>
+      <Field label="擺動點同步容許根數" hint="兩個交易對的擺動點時間差在幾根 K 棒之內才視為同步可比較">
+        <TextInput type="number" min={0} max={50} value={num(params, "maxMatchBars")} onChange={(e) => onChange({ ...params, maxMatchBars: Number(e.target.value) })} />
       </Field>
     </>
   );

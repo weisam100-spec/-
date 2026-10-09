@@ -13,6 +13,8 @@ export interface PipelineInput {
   strategyId: StrategyId;
   strategyParams: Record<string, unknown>;
   config: BacktestConfig;
+  /** 僅跨資產比較策略（如 SMT）需要：比較交易對的同週期 K 線 */
+  correlatedCandles?: Candle[];
 }
 
 export interface PipelineOutput {
@@ -30,9 +32,16 @@ export function runStrategyBacktest(input: PipelineInput): PipelineOutput {
   }
 
   const { candles, warnings: prepWarnings } = prepareCandles(input.candles, input.interval);
+  const correlatedCandles = input.correlatedCandles
+    ? prepareCandles(input.correlatedCandles, input.interval).candles
+    : undefined;
+  const correlatedSymbol =
+    typeof input.strategyParams.correlatedSymbol === "string" ? input.strategyParams.correlatedSymbol : undefined;
   const signals = strategy.generateSignals(candles, input.strategyParams as never, {
     symbol: input.symbol,
     interval: input.interval,
+    correlatedCandles,
+    correlatedSymbol,
   });
 
   const result = runBacktest({ candles, signals, config: input.config });

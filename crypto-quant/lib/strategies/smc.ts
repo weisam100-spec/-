@@ -1,4 +1,5 @@
 import type { Candle } from "@/lib/market/types";
+import { computeSwingEvents, type SwingEvent } from "./marketStructure";
 import type { Strategy, StrategySignal } from "./types";
 
 /**
@@ -34,32 +35,6 @@ export const smcDefaultParams: SmcParams = {
   minDisplacementMultiple: 1.5,
   maxMitigationBars: 50,
 };
-
-interface SwingEvent {
-  confirmedAt: number;
-  pivotIndex: number;
-  type: "high" | "low";
-  price: number;
-}
-
-function computeSwingEvents(candles: Candle[], lookback: number): SwingEvent[] {
-  const events: SwingEvent[] = [];
-  const n = candles.length;
-  for (let k = lookback; k < n - lookback; k++) {
-    let isHigh = true;
-    let isLow = true;
-    const pivotHigh = candles[k]!.high;
-    const pivotLow = candles[k]!.low;
-    for (let j = k - lookback; j <= k + lookback; j++) {
-      if (j === k) continue;
-      if (candles[j]!.high > pivotHigh) isHigh = false;
-      if (candles[j]!.low < pivotLow) isLow = false;
-    }
-    if (isHigh) events.push({ confirmedAt: k + lookback, pivotIndex: k, type: "high", price: pivotHigh });
-    if (isLow) events.push({ confirmedAt: k + lookback, pivotIndex: k, type: "low", price: pivotLow });
-  }
-  return events;
-}
 
 /** 由突破點往前尋找最後一根反方向（下跌）K 棒，作為多頭訂單塊 */
 function findBullishOrderBlock(candles: Candle[], breakIndex: number, lookback: number) {

@@ -3,7 +3,7 @@ import { apiError, apiOk } from "@/lib/api/response";
 import { withRateLimit } from "@/lib/api/withRateLimit";
 import { backtestConfigSchema, intervalSchema, strategyIdSchema, symbolSchema } from "@/lib/api/backtestSchema";
 import { env } from "@/lib/env";
-import { fetchKlinesRange } from "@/lib/market/klinesRange";
+import { fetchStrategyCandles } from "@/lib/market/strategyData";
 import { runWalkForward } from "@/lib/backtest/walkforward";
 import type { PerformanceMetrics } from "@/lib/backtest/metrics";
 import type { StrategyId } from "@/lib/strategies/registry";
@@ -35,18 +35,23 @@ export const POST = withRateLimit(async (request) => {
   }
   const { symbol, interval, strategyId, strategyParams, config, paramGrid, metricKey, folds } = parsed.data;
 
-  const klinesResult = await fetchKlinesRange({
+  const { primary, correlated } = await fetchStrategyCandles({
+    strategyId: strategyId as StrategyId,
     symbol,
     interval: interval as Interval,
+    strategyParams,
     startTime: config.startTime,
     endTime: config.endTime,
     maxBars: env.backtestMaxBars,
   });
-  if (klinesResult.unavailable) {
-    return apiError(`目前無法取得 ${symbol} 資料：${klinesResult.unavailable.reason}`, 502, "data_unavailable");
+  if (primary.unavailable) {
+    return apiError(`目前無法取得 ${symbol} 資料：${primary.unavailable.reason}`, 502, "data_unavailable");
   }
-  if (klinesResult.candles.length === 0) {
+  if (primary.candles.length === 0) {
     return apiError("所選日期區間內查無資料，請調整日期範圍", 404, "no_data");
+  }
+  if (correlated?.unavailable) {
+    return apiError(`目前無法取得比較交易對資料：${correlated.unavailable.reason}`, 502, "correlated_data_unavailable");
   }
 
   try {
@@ -54,10 +59,11 @@ export const POST = withRateLimit(async (request) => {
       {
         symbol,
         interval: interval as Interval,
-        candles: klinesResult.candles,
+        candles: primary.candles,
         strategyId: strategyId as StrategyId,
         strategyParams,
         config,
+        correlatedCandles: correlated?.candles,
       },
       paramGrid,
       metricKey as keyof PerformanceMetrics,
