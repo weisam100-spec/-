@@ -87,6 +87,23 @@ export function StrategyParamsForm({
         <MultiFactorForm params={params} onChange={onChange} />
       )}
 
+      {strategyId === "smc" && (
+        <>
+          <Field label="擺動點確認根數" hint="判斷波段高低點時，左右各需要幾根 K 棒才確認，數值越大結構越重要但確認越慢">
+            <TextInput type="number" min={2} max={50} value={num(params, "swingLookback")} onChange={(e) => set("swingLookback", Number(e.target.value))} />
+          </Field>
+          <Field label="訂單塊搜尋範圍" hint="往前搜尋造成突破的訂單塊（Order Block）候選 K 棒的根數">
+            <TextInput type="number" min={1} max={100} value={num(params, "orderBlockLookback")} onChange={(e) => set("orderBlockLookback", Number(e.target.value))} />
+          </Field>
+          <Field label="突破動能倍數" hint="帶動突破的 K 棒實體須達到近期平均實體的幾倍，過濾不夠有力的假突破">
+            <TextInput type="number" min={0.1} step={0.1} value={num(params, "minDisplacementMultiple")} onChange={(e) => set("minDisplacementMultiple", Number(e.target.value))} />
+          </Field>
+          <Field label="訂單塊有效期（根）" hint="訂單塊超過這麼多根 K 棒仍未被價格回測，視為失效不再觸發訊號">
+            <TextInput type="number" min={1} max={500} value={num(params, "maxMitigationBars")} onChange={(e) => set("maxMitigationBars", Number(e.target.value))} />
+          </Field>
+        </>
+      )}
+
       {errors.length > 0 && (
         <div className="rounded-md border border-[var(--color-down)]/40 bg-[var(--color-down-soft)]/40 p-2 text-xs text-[var(--color-down)]">
           <ul className="list-disc pl-4">

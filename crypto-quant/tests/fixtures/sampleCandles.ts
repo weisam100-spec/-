@@ -50,6 +50,38 @@ export function buildSampleCandles(startTime = 1_700_000_000_000, stepMs = 3_600
   return candles;
 }
 
+/**
+ * 專為 SMC（Smart Money Concepts）策略設計的小型情境資料：
+ * 先形成「較低高點、較低低點」的空頭結構，接著出現一根強力突破 K 棒收盤越過前波高點
+ * （形成 CHoCH），其前一根下跌 K 棒即為訂單塊；隨後價格回測該訂單塊區間，
+ * 應觸發一個偏多候選訊號。使用 swingLookback=2 等較敏感的參數以便在小筆資料內成立。
+ * 回傳的 candles 中，索引 25 為突破 K 棒，索引 28 為回測進場訊號觸發的 K 棒。
+ */
+export function buildSmcScenarioCandles(startTime = 1_700_000_000_000, stepMs = 3_600_000): Candle[] {
+  const seq: number[] = [
+    102, 103, 104, 103, 102, // 上升至波段高點 P1=104.1（idx2）
+    101, 100, 99, 98, 97, // 下跌至波段低點 T1=96.9（idx9）
+    98, 99, 100, 99, 98, // 反彈至波段高點 P2=100.1（idx12，低於 P1，較低高點）
+    97, 96, 95, 94, 93, // 下跌至波段低點 T2=92.9（idx19，低於 T1，較低低點，確認空頭結構）
+    94, 95, 94, 93, 92, // 小反彈後再度下跌，最後一根下跌 K 棒（idx24）即為訂單塊
+    100, // 強力突破 K 棒，收盤大幅突破前波高點（idx25，形成 CHoCH）
+    98, 97, 96, 94, 92.5, // 回測訂單塊區間（約 91.9~93.1），於 idx28 觸發進場訊號
+    93, 94, 95, // 訊號觸發後的後續 K 棒，供無未來函數測試使用
+  ];
+  const candles: Candle[] = [];
+  let prevClose = seq[0]! + 1;
+  let t = startTime;
+  for (const close of seq) {
+    const open = prevClose;
+    const high = Math.max(open, close) + 0.1;
+    const low = Math.min(open, close) - 0.1;
+    candles.push({ openTime: t, open, high, low, close, volume: 1000, closed: true });
+    prevClose = close;
+    t += stepMs;
+  }
+  return candles;
+}
+
 /** 含有缺漏（跳過一根）與重複時間戳的資料，供資料清理測試使用 */
 export function buildFlawedCandles(): Candle[] {
   const base = buildSampleCandles().slice(0, 20);

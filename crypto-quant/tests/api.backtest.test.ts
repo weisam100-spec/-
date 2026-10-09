@@ -25,11 +25,11 @@ describe("GET /api/symbols", () => {
 });
 
 describe("GET /api/strategies", () => {
-  it("回傳四種第一版策略", async () => {
+  it("回傳已註冊的策略清單", async () => {
     const res = await getStrategies(new Request("http://localhost/api/strategies") as never, undefined as never);
     const json = await res.json();
     expect(json.ok).toBe(true);
-    expect(json.data.strategies.length).toBe(4);
+    expect(json.data.strategies.length).toBe(5);
   });
 });
 

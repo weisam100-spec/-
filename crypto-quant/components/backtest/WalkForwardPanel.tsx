@@ -13,6 +13,7 @@ const STRATEGY_GRID_KEY: Record<string, string> = {
   "rsi-mean-reversion": "oversold",
   "macd-trend": "fastPeriod",
   "multi-factor": "scoreThreshold",
+  smc: "swingLookback",
 };
 
 function parseValues(input: string): number[] {

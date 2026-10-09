@@ -2,6 +2,7 @@ import { emaTrendStrategy, type EmaTrendParams } from "./emaTrend";
 import { rsiMeanReversionStrategy, type RsiMeanReversionParams } from "./rsiMeanReversion";
 import { macdTrendStrategy, type MacdTrendParams } from "./macdTrend";
 import { multiFactorStrategy, type MultiFactorParams } from "./multiFactor";
+import { smcStrategy, type SmcParams } from "./smc";
 import type { Strategy } from "./types";
 
 // 策略註冊表：未來新增突破策略、網格策略、動能策略或機器學習模型，
@@ -11,6 +12,7 @@ export const strategyRegistry = {
   "rsi-mean-reversion": rsiMeanReversionStrategy,
   "macd-trend": macdTrendStrategy,
   "multi-factor": multiFactorStrategy,
+  smc: smcStrategy,
 } satisfies Record<string, Strategy<Record<string, unknown>>>;
 
 export type StrategyId = keyof typeof strategyRegistry;
@@ -20,6 +22,7 @@ export type StrategyParamsMap = {
   "rsi-mean-reversion": RsiMeanReversionParams;
   "macd-trend": MacdTrendParams;
   "multi-factor": MultiFactorParams;
+  smc: SmcParams;
 };
 
 export function isStrategyId(id: string): id is StrategyId {
@@ -38,6 +41,7 @@ export {
   rsiMeanReversionStrategy,
   macdTrendStrategy,
   multiFactorStrategy,
+  smcStrategy,
 };
-export type { EmaTrendParams, RsiMeanReversionParams, MacdTrendParams, MultiFactorParams };
+export type { EmaTrendParams, RsiMeanReversionParams, MacdTrendParams, MultiFactorParams, SmcParams };
 export * from "./types";

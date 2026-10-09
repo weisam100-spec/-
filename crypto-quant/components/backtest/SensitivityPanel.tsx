@@ -26,6 +26,10 @@ const STRATEGY_AXIS_OPTIONS: Record<string, { key: string; label: string }[]> = 
     { key: "scoreThreshold", label: "訊號門檻" },
     { key: "riskVolatilityMultiple", label: "風險波動度倍數" },
   ],
+  smc: [
+    { key: "swingLookback", label: "擺動點確認根數" },
+    { key: "minDisplacementMultiple", label: "突破動能倍數" },
+  ],
 };
 
 const CONFIG_AXIS_OPTIONS = [
