@@ -29,7 +29,7 @@ describe("GET /api/strategies", () => {
     const res = await getStrategies(new Request("http://localhost/api/strategies") as never, undefined as never);
     const json = await res.json();
     expect(json.ok).toBe(true);
-    expect(json.data.strategies.length).toBe(6);
+    expect(json.data.strategies.length).toBe(13);
   });
 });
 

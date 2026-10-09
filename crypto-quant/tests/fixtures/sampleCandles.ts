@@ -126,6 +126,36 @@ export function buildSmtScenarioCandles(
   };
 }
 
+/**
+ * 確定性的「有噪音」價格序列（以簡單線性同餘亂數產生，固定種子確保可重現），
+ * 帶有震盪與不規則上下影線，供需要真實反轉型態／假突破等情境的策略測試使用
+ * （純趨勢的 buildSampleCandles 太平滑，不足以觸發這類訊號）。
+ */
+export function buildNoisyCandles(count = 300, seed = 42, startTime = 1_700_000_000_000, stepMs = 3_600_000): Candle[] {
+  let s = seed;
+  const rand = () => {
+    s = (s * 1103515245 + 12345) & 0x7fffffff;
+    return s / 0x7fffffff;
+  };
+  const candles: Candle[] = [];
+  let price = 100;
+  let t = startTime;
+  for (let i = 0; i < count; i++) {
+    const open = price;
+    const drift = Math.sin(i / 20) * 0.3;
+    const noise = (rand() - 0.5) * 3;
+    const close = Math.max(1, open + drift + noise);
+    const wick = Math.abs(noise) * 0.8 + 0.2;
+    const high = Math.max(open, close) + rand() * wick;
+    const low = Math.min(open, close) - rand() * wick;
+    const volume = 500 + rand() * 1000;
+    candles.push({ openTime: t, open, high, low, close, volume, closed: true });
+    price = close;
+    t += stepMs;
+  }
+  return candles;
+}
+
 /** 含有缺漏（跳過一根）與重複時間戳的資料，供資料清理測試使用 */
 export function buildFlawedCandles(): Candle[] {
   const base = buildSampleCandles().slice(0, 20);

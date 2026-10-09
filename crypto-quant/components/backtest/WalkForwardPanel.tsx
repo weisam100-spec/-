@@ -15,6 +15,13 @@ const STRATEGY_GRID_KEY: Record<string, string> = {
   "multi-factor": "scoreThreshold",
   smc: "swingLookback",
   smt: "swingLookback",
+  "trend-pullback-ema": "emaShortPeriod",
+  "breakout-retest": "channelPeriod",
+  "range-reversal": "rangePeriod",
+  "bollinger-rsi-reversion": "bollingerPeriod",
+  "rsi-divergence-structure": "swingLookback",
+  "vwap-pullback": "minBiasBars",
+  "false-breakout-reclaim": "lookbackPeriod",
 };
 
 function parseValues(input: string): number[] {

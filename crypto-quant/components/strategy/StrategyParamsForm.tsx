@@ -110,6 +110,107 @@ export function StrategyParamsForm({
 
       {strategyId === "smt" && <SmtForm symbol={symbol} params={params} onChange={onChange} />}
 
+      {strategyId === "trend-pullback-ema" && (
+        <>
+          <Field label="短期 EMA 週期">
+            <TextInput type="number" min={2} value={num(params, "emaShortPeriod")} onChange={(e) => set("emaShortPeriod", Number(e.target.value))} />
+          </Field>
+          <Field label="長期 EMA 週期">
+            <TextInput type="number" min={3} value={num(params, "emaLongPeriod")} onChange={(e) => set("emaLongPeriod", Number(e.target.value))} />
+          </Field>
+          <Field label="回踩觸碰線" hint="以哪一條 EMA 作為回踩觸碰的參考線">
+            <Select value={String(params.pullbackLine ?? "short")} onChange={(e) => set("pullbackLine", e.target.value)}>
+              <option value="short">短期 EMA</option>
+              <option value="long">長期 EMA</option>
+            </Select>
+          </Field>
+          <Field label="訊號冷卻根數" hint="兩次訊號之間至少間隔幾根 K 棒，避免價格貼著 EMA 來回時連續觸發">
+            <TextInput type="number" min={0} max={200} value={num(params, "cooldownBars")} onChange={(e) => set("cooldownBars", Number(e.target.value))} />
+          </Field>
+        </>
+      )}
+
+      {strategyId === "breakout-retest" && (
+        <>
+          <Field label="區間觀察根數" hint="判斷突破用的區間高低點，取過去這麼多根 K 棒（不含當根）">
+            <TextInput type="number" min={2} max={500} value={num(params, "channelPeriod")} onChange={(e) => set("channelPeriod", Number(e.target.value))} />
+          </Field>
+          <Field label="回測容許距離（%）" hint="價格與突破關卡的最大相對距離，在此範圍內才算「回測到」">
+            <TextInput type="number" min={0.1} step={0.1} max={10} value={num(params, "retestTolerancePct")} onChange={(e) => set("retestTolerancePct", Number(e.target.value))} />
+          </Field>
+          <Field label="關卡有效期（根）" hint="突破關卡超過這麼多根 K 棒仍未被回測，視為失效">
+            <TextInput type="number" min={1} max={500} value={num(params, "maxRetestBars")} onChange={(e) => set("maxRetestBars", Number(e.target.value))} />
+          </Field>
+        </>
+      )}
+
+      {strategyId === "range-reversal" && (
+        <>
+          <Field label="區間觀察根數" hint="判斷支撐／壓力用的區間，取過去這麼多根 K 棒（不含當根）">
+            <TextInput type="number" min={2} max={500} value={num(params, "rangePeriod")} onChange={(e) => set("rangePeriod", Number(e.target.value))} />
+          </Field>
+          <Field label="觸及容許距離（%）" hint="價格與支撐／壓力的最大相對距離，在此範圍內才算「觸及」">
+            <TextInput type="number" min={0.1} step={0.1} max={10} value={num(params, "touchTolerancePct")} onChange={(e) => set("touchTolerancePct", Number(e.target.value))} />
+          </Field>
+        </>
+      )}
+
+      {strategyId === "bollinger-rsi-reversion" && (
+        <>
+          <Field label="布林通道週期">
+            <TextInput type="number" min={2} value={num(params, "bollingerPeriod")} onChange={(e) => set("bollingerPeriod", Number(e.target.value))} />
+          </Field>
+          <Field label="布林通道標準差倍數">
+            <TextInput type="number" min={0.1} step={0.1} value={num(params, "bollingerMultiplier")} onChange={(e) => set("bollingerMultiplier", Number(e.target.value))} />
+          </Field>
+          <Field label="RSI 週期">
+            <TextInput type="number" min={2} value={num(params, "rsiPeriod")} onChange={(e) => set("rsiPeriod", Number(e.target.value))} />
+          </Field>
+          <Field label="超賣門檻">
+            <TextInput type="number" min={0} max={100} value={num(params, "oversold")} onChange={(e) => set("oversold", Number(e.target.value))} />
+          </Field>
+          <Field label="超買門檻">
+            <TextInput type="number" min={0} max={100} value={num(params, "overbought")} onChange={(e) => set("overbought", Number(e.target.value))} />
+          </Field>
+        </>
+      )}
+
+      {strategyId === "rsi-divergence-structure" && (
+        <>
+          <Field label="RSI 週期">
+            <TextInput type="number" min={2} value={num(params, "rsiPeriod")} onChange={(e) => set("rsiPeriod", Number(e.target.value))} />
+          </Field>
+          <Field label="擺動點確認根數">
+            <TextInput type="number" min={2} max={50} value={num(params, "swingLookback")} onChange={(e) => set("swingLookback", Number(e.target.value))} />
+          </Field>
+          <Field label="結構確認有效期（根）" hint="背離出現後，必須在幾根 K 棒之內完成結構確認，否則視為失效">
+            <TextInput type="number" min={1} max={500} value={num(params, "maxConfirmBars")} onChange={(e) => set("maxConfirmBars", Number(e.target.value))} />
+          </Field>
+        </>
+      )}
+
+      {strategyId === "vwap-pullback" && (
+        <>
+          <Field label="偏向確認根數" hint="至少連續幾根收盤在 VWAP 同一側，才視為當日偏向已經成立">
+            <TextInput type="number" min={1} max={200} value={num(params, "minBiasBars")} onChange={(e) => set("minBiasBars", Number(e.target.value))} />
+          </Field>
+          <Field label="訊號冷卻根數">
+            <TextInput type="number" min={0} max={200} value={num(params, "cooldownBars")} onChange={(e) => set("cooldownBars", Number(e.target.value))} />
+          </Field>
+        </>
+      )}
+
+      {strategyId === "false-breakout-reclaim" && (
+        <>
+          <Field label="支撐／壓力觀察根數">
+            <TextInput type="number" min={2} max={500} value={num(params, "lookbackPeriod")} onChange={(e) => set("lookbackPeriod", Number(e.target.value))} />
+          </Field>
+          <Field label="收回確認根數" hint="跌破／突破後，必須在幾根 K 棒之內收盤收回，否則視為真突破">
+            <TextInput type="number" min={1} max={50} value={num(params, "maxReclaimBars")} onChange={(e) => set("maxReclaimBars", Number(e.target.value))} />
+          </Field>
+        </>
+      )}
+
       {errors.length > 0 && (
         <div className="rounded-md border border-[var(--color-down)]/40 bg-[var(--color-down-soft)]/40 p-2 text-xs text-[var(--color-down)]">
           <ul className="list-disc pl-4">

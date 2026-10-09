@@ -34,6 +34,34 @@ const STRATEGY_AXIS_OPTIONS: Record<string, { key: string; label: string }[]> = 
     { key: "swingLookback", label: "擺動點確認根數" },
     { key: "maxMatchBars", label: "擺動點同步容許根數" },
   ],
+  "trend-pullback-ema": [
+    { key: "emaShortPeriod", label: "短期 EMA 週期" },
+    { key: "emaLongPeriod", label: "長期 EMA 週期" },
+  ],
+  "breakout-retest": [
+    { key: "channelPeriod", label: "區間觀察根數" },
+    { key: "retestTolerancePct", label: "回測容許距離（%）" },
+  ],
+  "range-reversal": [
+    { key: "rangePeriod", label: "區間觀察根數" },
+    { key: "touchTolerancePct", label: "觸及容許距離（%）" },
+  ],
+  "bollinger-rsi-reversion": [
+    { key: "bollingerPeriod", label: "布林通道週期" },
+    { key: "rsiPeriod", label: "RSI 週期" },
+  ],
+  "rsi-divergence-structure": [
+    { key: "swingLookback", label: "擺動點確認根數" },
+    { key: "maxConfirmBars", label: "結構確認有效期（根）" },
+  ],
+  "vwap-pullback": [
+    { key: "minBiasBars", label: "偏向確認根數" },
+    { key: "cooldownBars", label: "訊號冷卻根數" },
+  ],
+  "false-breakout-reclaim": [
+    { key: "lookbackPeriod", label: "支撐／壓力觀察根數" },
+    { key: "maxReclaimBars", label: "收回確認根數" },
+  ],
 };
 
 const CONFIG_AXIS_OPTIONS = [
