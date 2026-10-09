@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiDelete, apiGet, apiPatch, apiPost } from "./api";
+import { apiDelete, apiGet, apiPatch, apiPost, apiPut } from "./api";
 import type { SymbolMeta, Interval } from "@/lib/market/symbols";
 import type { Candle, ProviderResult, Ticker24h } from "@/lib/market/types";
 import type { FxRate } from "@/lib/market/fx";
@@ -195,6 +195,41 @@ export function useResetPortfolio() {
   return useMutation({
     mutationFn: (initialCashUsdt?: number) => apiPost<{ portfolio: PortfolioSnapshot }>("/api/portfolio", { initialCashUsdt }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["portfolio"] }),
+  });
+}
+
+export interface NotificationSettingsData {
+  settings: {
+    workspaceId: string;
+    telegramEnabled: boolean;
+    telegramChatId: string | null;
+    emailEnabled: boolean;
+    emailAddress: string | null;
+    pushEnabled: boolean;
+  };
+  serverConfigured: { telegram: boolean; email: boolean; push: boolean };
+  alertsEnabled: boolean;
+}
+
+export function useNotificationSettings() {
+  return useQuery({
+    queryKey: ["notification-settings"],
+    queryFn: () => apiGet<NotificationSettingsData>("/api/notifications/settings"),
+  });
+}
+
+export function useUpdateNotificationSettings() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (patch: unknown) => apiPut<{ settings: NotificationSettingsData["settings"] }>("/api/notifications/settings", patch),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["notification-settings"] }),
+  });
+}
+
+export function useSendTestNotification() {
+  return useMutation({
+    mutationFn: (channel: "telegram" | "email" | "push") =>
+      apiPost<{ sent: boolean }>("/api/notifications/test", { channel }),
   });
 }
 

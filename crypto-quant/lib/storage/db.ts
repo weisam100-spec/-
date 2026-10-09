@@ -26,6 +26,14 @@ export function getDb(): Database.Database {
   return db;
 }
 
+/** 為既有資料庫檔案補上新欄位（若尚未存在），避免舊版 db 檔案因缺欄位而壞掉 */
+function addColumnIfMissing(db: Database.Database, table: string, column: string, definition: string) {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
+  if (!cols.some((c) => c.name === column)) {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+  }
+}
+
 function migrate(db: Database.Database) {
   db.exec(`
     CREATE TABLE IF NOT EXISTS strategy_configs (
@@ -81,5 +89,28 @@ function migrate(db: Database.Database) {
       created_at INTEGER NOT NULL
     );
     CREATE INDEX IF NOT EXISTS idx_portfolio_tx_workspace ON portfolio_transactions(workspace_id);
+
+    CREATE TABLE IF NOT EXISTS notification_settings (
+      workspace_id TEXT PRIMARY KEY,
+      telegram_enabled INTEGER NOT NULL DEFAULT 0,
+      telegram_chat_id TEXT,
+      email_enabled INTEGER NOT NULL DEFAULT 0,
+      email_address TEXT,
+      push_enabled INTEGER NOT NULL DEFAULT 0,
+      updated_at INTEGER NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS push_subscriptions (
+      id TEXT PRIMARY KEY,
+      workspace_id TEXT NOT NULL,
+      endpoint TEXT NOT NULL UNIQUE,
+      p256dh TEXT NOT NULL,
+      auth TEXT NOT NULL,
+      created_at INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_push_subscriptions_workspace ON push_subscriptions(workspace_id);
   `);
+
+  addColumnIfMissing(db, "strategy_configs", "alert_enabled", "INTEGER NOT NULL DEFAULT 0");
+  addColumnIfMissing(db, "strategy_configs", "last_notified_signal_time", "INTEGER");
 }

@@ -11,6 +11,7 @@ const patchSchema = z.object({
   interval: intervalSchema.optional(),
   params: z.record(z.string(), z.unknown()).optional(),
   backtestConfig: backtestConfigSchema.optional(),
+  alertEnabled: z.boolean().optional(),
 });
 
 type Ctx = { params: Promise<{ id: string }> };

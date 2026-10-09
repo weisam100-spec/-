@@ -13,6 +13,7 @@ const NAV = [
   { href: "/compare", label: "策略比較" },
   { href: "/portfolio", label: "模擬投資組合" },
   { href: "/watchlist", label: "觀察清單" },
+  { href: "/notifications", label: "訊號提醒" },
   { href: "/about", label: "系統說明" },
 ];
 

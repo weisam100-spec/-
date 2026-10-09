@@ -24,4 +24,19 @@ export const env = {
   backtestTimeoutMs: num(process.env.BACKTEST_TIMEOUT_MS, 15000),
   enableLiveTrading: bool(process.env.ENABLE_LIVE_TRADING, false),
   appTimezone: process.env.APP_TIMEZONE ?? "Asia/Taipei",
+
+  // 訊號提醒通知
+  alertsEnabled: bool(process.env.ALERTS_ENABLED, false),
+  alertPollIntervalSeconds: num(process.env.ALERT_POLL_INTERVAL_SECONDS, 60),
+  alertMaxLookbackBars: num(process.env.ALERT_MAX_LOOKBACK_BARS, 300),
+  telegramBotToken: process.env.TELEGRAM_BOT_TOKEN ?? "",
+  smtpHost: process.env.SMTP_HOST ?? "",
+  smtpPort: num(process.env.SMTP_PORT, 587),
+  smtpUser: process.env.SMTP_USER ?? "",
+  smtpPassword: process.env.SMTP_PASSWORD ?? "",
+  smtpFrom: process.env.SMTP_FROM ?? "",
+  smtpSecure: bool(process.env.SMTP_SECURE, false),
+  vapidPublicKey: process.env.VAPID_PUBLIC_KEY ?? "",
+  vapidPrivateKey: process.env.VAPID_PRIVATE_KEY ?? "",
+  vapidSubject: process.env.VAPID_SUBJECT ?? "mailto:admin@example.com",
 };

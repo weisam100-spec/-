@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Field, Select, TextInput } from "@/components/ui/Field";
+import { Checkbox, Field, Select, TextInput } from "@/components/ui/Field";
 import { ErrorState } from "@/components/common/StatusStates";
 import { StrategyParamsForm } from "@/components/strategy/StrategyParamsForm";
 import { BacktestConfigForm } from "@/components/strategy/BacktestConfigForm";
@@ -33,6 +33,7 @@ export default function StrategyPage() {
     endTime: Date.now(),
   });
   const [saveName, setSaveName] = useState("我的策略設定");
+  const [saveAlertEnabled, setSaveAlertEnabled] = useState(false);
 
   const runMutation = useRunBacktest();
   const createConfigMutation = useCreateStrategyConfig();
@@ -84,7 +85,15 @@ export default function StrategyPage() {
   };
 
   const handleSave = () => {
-    createConfigMutation.mutate({ strategyId, name: saveName, symbol, interval, params, backtestConfig: config });
+    createConfigMutation.mutate({
+      strategyId,
+      name: saveName,
+      symbol,
+      interval,
+      params,
+      backtestConfig: config,
+      alertEnabled: saveAlertEnabled,
+    });
   };
 
   return (
@@ -143,6 +152,7 @@ export default function StrategyPage() {
           </Button>
           <div className="flex items-center gap-2">
             <TextInput value={saveName} onChange={(e) => setSaveName(e.target.value)} className="w-48" placeholder="設定名稱" />
+            <Checkbox label="啟用訊號提醒" checked={saveAlertEnabled} onChange={(e) => setSaveAlertEnabled(e.target.checked)} />
             <Button variant="secondary" onClick={handleSave} disabled={createConfigMutation.isPending}>
               儲存設定
             </Button>

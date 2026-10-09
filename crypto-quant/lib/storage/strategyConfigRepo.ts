@@ -13,6 +13,10 @@ export interface StrategyConfigRecord {
   interval: Interval;
   params: Record<string, unknown>;
   backtestConfig: BacktestConfig;
+  /** 是否啟用即時訊號提醒（透過背景排程比對最新資料並發送通知） */
+  alertEnabled: boolean;
+  /** 最近一次已通知的訊號時間，避免重複通知同一個訊號 */
+  lastNotifiedSignalTime: number | null;
   createdAt: number;
   updatedAt: number;
 }
@@ -26,6 +30,8 @@ interface Row {
   interval: string;
   params_json: string;
   backtest_config_json: string;
+  alert_enabled: number;
+  last_notified_signal_time: number | null;
   created_at: number;
   updated_at: number;
 }
@@ -40,6 +46,8 @@ function rowToRecord(row: Row): StrategyConfigRecord {
     interval: row.interval as Interval,
     params: JSON.parse(row.params_json),
     backtestConfig: JSON.parse(row.backtest_config_json),
+    alertEnabled: Boolean(row.alert_enabled),
+    lastNotifiedSignalTime: row.last_notified_signal_time,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -63,14 +71,15 @@ export function getStrategyConfig(workspaceId: string, id: string): StrategyConf
 
 export function createStrategyConfig(
   workspaceId: string,
-  input: Pick<StrategyConfigRecord, "strategyId" | "name" | "symbol" | "interval" | "params" | "backtestConfig">,
+  input: Pick<StrategyConfigRecord, "strategyId" | "name" | "symbol" | "interval" | "params" | "backtestConfig"> &
+    Partial<Pick<StrategyConfigRecord, "alertEnabled">>,
 ): StrategyConfigRecord {
   const db = getDb();
   const now = Date.now();
   const id = randomUUID();
   db.prepare(
-    `INSERT INTO strategy_configs (id, workspace_id, strategy_id, name, symbol, interval, params_json, backtest_config_json, created_at, updated_at)
-     VALUES (@id, @workspaceId, @strategyId, @name, @symbol, @interval, @paramsJson, @backtestConfigJson, @createdAt, @updatedAt)`,
+    `INSERT INTO strategy_configs (id, workspace_id, strategy_id, name, symbol, interval, params_json, backtest_config_json, alert_enabled, last_notified_signal_time, created_at, updated_at)
+     VALUES (@id, @workspaceId, @strategyId, @name, @symbol, @interval, @paramsJson, @backtestConfigJson, @alertEnabled, NULL, @createdAt, @updatedAt)`,
   ).run({
     id,
     workspaceId,
@@ -80,6 +89,7 @@ export function createStrategyConfig(
     interval: input.interval,
     paramsJson: JSON.stringify(input.params),
     backtestConfigJson: JSON.stringify(input.backtestConfig),
+    alertEnabled: input.alertEnabled ? 1 : 0,
     createdAt: now,
     updatedAt: now,
   });
@@ -89,14 +99,17 @@ export function createStrategyConfig(
 export function updateStrategyConfig(
   workspaceId: string,
   id: string,
-  patch: Partial<Pick<StrategyConfigRecord, "name" | "params" | "backtestConfig" | "symbol" | "interval">>,
+  patch: Partial<Pick<StrategyConfigRecord, "name" | "params" | "backtestConfig" | "symbol" | "interval" | "alertEnabled">>,
 ): StrategyConfigRecord | null {
   const existing = getStrategyConfig(workspaceId, id);
   if (!existing) return null;
   const db = getDb();
   const merged = { ...existing, ...patch };
+  // 變更交易對／策略／參數時，連帶重置提醒基準，避免拿舊策略設定下的訊號去比對新設定
+  const resetBaseline =
+    patch.symbol !== undefined || patch.interval !== undefined || patch.params !== undefined;
   db.prepare(
-    `UPDATE strategy_configs SET name=@name, symbol=@symbol, interval=@interval, params_json=@paramsJson, backtest_config_json=@backtestConfigJson, updated_at=@updatedAt
+    `UPDATE strategy_configs SET name=@name, symbol=@symbol, interval=@interval, params_json=@paramsJson, backtest_config_json=@backtestConfigJson, alert_enabled=@alertEnabled, last_notified_signal_time=@lastNotifiedSignalTime, updated_at=@updatedAt
      WHERE workspace_id=@workspaceId AND id=@id`,
   ).run({
     id,
@@ -106,6 +119,8 @@ export function updateStrategyConfig(
     interval: merged.interval,
     paramsJson: JSON.stringify(merged.params),
     backtestConfigJson: JSON.stringify(merged.backtestConfig),
+    alertEnabled: merged.alertEnabled ? 1 : 0,
+    lastNotifiedSignalTime: resetBaseline ? null : merged.lastNotifiedSignalTime,
     updatedAt: Date.now(),
   });
   return getStrategyConfig(workspaceId, id);
@@ -121,6 +136,7 @@ export function duplicateStrategyConfig(workspaceId: string, id: string): Strate
     interval: existing.interval,
     params: existing.params,
     backtestConfig: existing.backtestConfig,
+    alertEnabled: false,
   });
 }
 
@@ -128,4 +144,17 @@ export function deleteStrategyConfig(workspaceId: string, id: string): boolean {
   const db = getDb();
   const result = db.prepare("DELETE FROM strategy_configs WHERE workspace_id = ? AND id = ?").run(workspaceId, id);
   return result.changes > 0;
+}
+
+/** 列出所有工作區中啟用提醒的策略設定，供背景排程掃描使用（不分工作區） */
+export function listAlertEnabledConfigs(): StrategyConfigRecord[] {
+  const db = getDb();
+  const rows = db.prepare("SELECT * FROM strategy_configs WHERE alert_enabled = 1").all() as Row[];
+  return rows.map(rowToRecord);
+}
+
+/** 排程端更新「已通知到的最新訊號時間」，不影響 updated_at（避免干擾使用者視角的排序） */
+export function markConfigNotified(id: string, signalTime: number): void {
+  const db = getDb();
+  db.prepare("UPDATE strategy_configs SET last_notified_signal_time = ? WHERE id = ?").run(signalTime, id);
 }

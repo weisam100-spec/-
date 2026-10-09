@@ -14,6 +14,7 @@ const createSchema = z.object({
   interval: intervalSchema,
   params: z.record(z.string(), z.unknown()),
   backtestConfig: backtestConfigSchema,
+  alertEnabled: z.boolean().optional(),
 });
 
 export const GET = withRateLimit(async () => {
@@ -47,6 +48,7 @@ export const POST = withRateLimit(async (request) => {
     interval: parsed.data.interval as never,
     params: parsed.data.params,
     backtestConfig: parsed.data.backtestConfig,
+    alertEnabled: parsed.data.alertEnabled,
   });
   return apiOk({ config: created }, 201);
 });

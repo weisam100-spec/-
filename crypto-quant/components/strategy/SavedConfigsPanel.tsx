@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
-import { TextInput } from "@/components/ui/Field";
+import { Checkbox, TextInput } from "@/components/ui/Field";
 import {
   useDeleteStrategyConfig,
   useDuplicateStrategyConfig,
@@ -58,6 +58,13 @@ export function SavedConfigsPanel({ onLoad }: { onLoad: (config: StrategyConfigR
               <p className="mt-0.5 text-[var(--color-text-muted)]">
                 {c.symbol} · {c.interval} · 更新於 {formatDateTime(c.updatedAt)}
               </p>
+              <div className="mt-1.5">
+                <Checkbox
+                  label="啟用訊號提醒"
+                  checked={c.alertEnabled}
+                  onChange={(e) => updateMutation.mutate({ id: c.id, patch: { alertEnabled: e.target.checked } })}
+                />
+              </div>
               <div className="mt-2 flex flex-wrap gap-1">
                 <Button variant="secondary" className="!px-2 !py-1" onClick={() => onLoad(c)}>
                   載入
