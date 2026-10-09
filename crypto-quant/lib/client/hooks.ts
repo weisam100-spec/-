@@ -126,6 +126,62 @@ export function useRunWalkForward() {
   });
 }
 
+export interface OptimizeCandidate {
+  params: Record<string, number>;
+  metricValue: number | null;
+  metrics: PerformanceMetrics;
+}
+
+export function useRunOptimize() {
+  return useMutation({
+    mutationFn: (payload: unknown) =>
+      apiPost<{
+        ranked: OptimizeCandidate[];
+        totalCombos: number;
+        evaluatedCombos: number;
+        metricKey: string;
+        warnings: string[];
+        disclaimer: string;
+      }>("/api/backtest/optimize", payload),
+  });
+}
+
+export interface PortfolioLegOutput {
+  label: string;
+  symbol: string;
+  strategyId: StrategyId;
+  capitalUsdt: number;
+  ok: boolean;
+  error?: string;
+  metrics?: PerformanceMetrics;
+}
+
+export interface PortfolioCombinedMetrics {
+  initialCapital: number;
+  finalEquity: number;
+  totalReturnPct: number;
+  buyHoldReturnPct: number;
+  cagrPct: number | null;
+  maxDrawdownPct: number;
+  annualizedVolatilityPct: number | null;
+  sharpeRatio: number | null;
+}
+
+export interface PortfolioBacktestResponse {
+  legs: PortfolioLegOutput[];
+  combinedEquityCurve: { time: number; equity: number; buyHoldEquity: number }[];
+  combinedMetrics: PortfolioCombinedMetrics;
+  correlations: { legA: string; legB: string; correlation: number | null }[];
+  warnings: string[];
+  disclaimer: string;
+}
+
+export function useRunPortfolioBacktest() {
+  return useMutation({
+    mutationFn: (payload: unknown) => apiPost<PortfolioBacktestResponse>("/api/backtest/portfolio", payload),
+  });
+}
+
 export function useStrategyConfigs() {
   return useQuery({
     queryKey: ["strategy-configs"],

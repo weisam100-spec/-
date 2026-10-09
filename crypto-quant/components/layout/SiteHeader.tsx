@@ -11,6 +11,8 @@ const NAV = [
   { href: "/strategy", label: "策略設定" },
   { href: "/backtest", label: "回測結果" },
   { href: "/compare", label: "策略比較" },
+  { href: "/optimize", label: "參數自動優化" },
+  { href: "/portfolio-backtest", label: "組合回測" },
   { href: "/portfolio", label: "模擬投資組合" },
   { href: "/watchlist", label: "觀察清單" },
   { href: "/notifications", label: "訊號提醒" },

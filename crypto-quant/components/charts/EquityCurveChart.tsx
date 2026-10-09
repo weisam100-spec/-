@@ -2,9 +2,8 @@
 
 import { Area, AreaChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { formatDate } from "@/lib/format";
-import type { EquityPoint } from "@/lib/backtest/types";
 
-export function EquityCurveChart({ data }: { data: EquityPoint[] }) {
+export function EquityCurveChart({ data }: { data: { time: number; equity: number; buyHoldEquity: number }[] }) {
   const chartData = data.map((p) => ({ time: p.time, 策略資產: p.equity, 買進持有: p.buyHoldEquity }));
   return (
     <ResponsiveContainer width="100%" height={280}>

@@ -1,5 +1,6 @@
 import type { PerformanceMetrics } from "./metrics";
 import { runStrategyBacktest, type PipelineInput } from "./runPipeline";
+import { cartesianProduct } from "./paramGrid";
 
 export interface WalkForwardFold {
   foldIndex: number;
@@ -21,21 +22,6 @@ export interface WalkForwardResult {
 const MAX_COMBOS = 30;
 const MAX_FOLDS = 8;
 const MIN_WINDOW_BARS = 40;
-
-function cartesianProduct(paramGrid: Record<string, number[]>): Record<string, number>[] {
-  const keys = Object.keys(paramGrid);
-  if (keys.length === 0) return [{}];
-  let combos: Record<string, number>[] = [{}];
-  for (const key of keys) {
-    const values = paramGrid[key]!;
-    const next: Record<string, number>[] = [];
-    for (const combo of combos) {
-      for (const v of values) next.push({ ...combo, [key]: v });
-    }
-    combos = next;
-  }
-  return combos;
-}
 
 /**
  * 基礎版 walk-forward analysis：
