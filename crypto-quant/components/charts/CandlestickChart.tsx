@@ -7,6 +7,7 @@ import {
   CandlestickSeries,
   HistogramSeries,
   LineSeries,
+  LineStyle,
   type IChartApi,
   type UTCTimestamp,
 } from "lightweight-charts";
@@ -19,15 +20,24 @@ export interface OverlayLine {
   data: { time: number; value: number }[];
 }
 
+export interface KeyPriceLine {
+  price: number;
+  color: string;
+  title: string;
+}
+
 export function CandlestickChart({
   candles,
   overlays = [],
   signals = [],
+  priceLines = [],
   height = 380,
 }: {
   candles: Candle[];
   overlays?: OverlayLine[];
   signals?: StrategySignal[];
+  /** 水平關鍵價位線（支撐／壓力），僅標示價位本身，不代表預測或保證 */
+  priceLines?: KeyPriceLine[];
   height?: number;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -96,6 +106,17 @@ export function CandlestickChart({
       );
     }
 
+    for (const line of priceLines) {
+      candleSeries.createPriceLine({
+        price: line.price,
+        color: line.color,
+        lineWidth: 1,
+        lineStyle: LineStyle.Dashed,
+        axisLabelVisible: true,
+        title: line.title,
+      });
+    }
+
     if (signals.length > 0) {
       const markersPlugin = createSeriesMarkers(candleSeries, []);
       markersPlugin.setMarkers(
@@ -122,7 +143,7 @@ export function CandlestickChart({
       chart.remove();
       chartRef.current = null;
     };
-  }, [candles, overlays, signals, height]);
+  }, [candles, overlays, signals, priceLines, height]);
 
   return <div ref={containerRef} className="w-full" style={{ height }} />;
 }

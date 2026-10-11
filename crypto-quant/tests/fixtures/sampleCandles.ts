@@ -82,7 +82,7 @@ export function buildSmcScenarioCandles(startTime = 1_700_000_000_000, stepMs = 
   return candles;
 }
 
-function buildCandlesFromCloses(closes: number[], startTime: number, stepMs: number): Candle[] {
+export function buildCandlesFromCloses(closes: number[], startTime = 1_700_000_000_000, stepMs = 3_600_000): Candle[] {
   const candles: Candle[] = [];
   let prevClose = closes[0]! + 1;
   let t = startTime;
