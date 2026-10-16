@@ -1,5 +1,4 @@
-import type { Candle } from "@/lib/market/types";
-import { computeSwingEvents, type SwingEvent } from "./marketStructure";
+import { detectOrderBlocks } from "./orderBlockDetection";
 import type { Strategy, StrategySignal } from "./types";
 
 /**
@@ -36,36 +35,6 @@ export const smcDefaultParams: SmcParams = {
   maxMitigationBars: 50,
 };
 
-/** 由突破點往前尋找最後一根反方向（下跌）K 棒，作為多頭訂單塊 */
-function findBullishOrderBlock(candles: Candle[], breakIndex: number, lookback: number) {
-  const from = Math.max(0, breakIndex - lookback);
-  for (let j = breakIndex - 1; j >= from; j--) {
-    const c = candles[j]!;
-    if (c.close < c.open) return { high: c.high, low: c.low };
-  }
-  return null;
-}
-
-/** 由突破點往前尋找最後一根反方向（上漲）K 棒，作為空頭訂單塊 */
-function findBearishOrderBlock(candles: Candle[], breakIndex: number, lookback: number) {
-  const from = Math.max(0, breakIndex - lookback);
-  for (let j = breakIndex - 1; j >= from; j--) {
-    const c = candles[j]!;
-    if (c.close > c.open) return { high: c.high, low: c.low };
-  }
-  return null;
-}
-
-interface PendingOrderBlock {
-  type: "bullish" | "bearish";
-  high: number;
-  low: number;
-  createdAt: number;
-  reason: string;
-  isChoch: boolean;
-  displacementRatio: number;
-}
-
 export const smcStrategy: Strategy<SmcParams> = {
   id: "smc",
   name: "SMC 聰明錢概念策略",
@@ -75,133 +44,54 @@ export const smcStrategy: Strategy<SmcParams> = {
 
   validateParams(params) {
     const errors: string[] = [];
-    if (!Number.isFinite(params.swingLookback) || params.swingLookback < 2 || params.swingLookback > 50) {
+    if (
+      !Number.isFinite(params.swingLookback) ||
+      params.swingLookback < 2 ||
+      params.swingLookback > 50
+    ) {
       errors.push("擺動點確認根數必須介於 2 至 50 之間");
     }
-    if (!Number.isFinite(params.orderBlockLookback) || params.orderBlockLookback < 1 || params.orderBlockLookback > 100) {
+    if (
+      !Number.isFinite(params.orderBlockLookback) ||
+      params.orderBlockLookback < 1 ||
+      params.orderBlockLookback > 100
+    ) {
       errors.push("訂單塊搜尋範圍必須介於 1 至 100 之間");
     }
-    if (!Number.isFinite(params.minDisplacementMultiple) || params.minDisplacementMultiple <= 0) {
+    if (
+      !Number.isFinite(params.minDisplacementMultiple) ||
+      params.minDisplacementMultiple <= 0
+    ) {
       errors.push("突破動能倍數必須大於 0");
     }
-    if (!Number.isFinite(params.maxMitigationBars) || params.maxMitigationBars < 1 || params.maxMitigationBars > 500) {
+    if (
+      !Number.isFinite(params.maxMitigationBars) ||
+      params.maxMitigationBars < 1 ||
+      params.maxMitigationBars > 500
+    ) {
       errors.push("訂單塊有效期（K 棒數）必須介於 1 至 500 之間");
     }
     return { valid: errors.length === 0, errors };
   },
 
   generateSignals(candles, params, ctx): StrategySignal[] {
-    const n = candles.length;
-    if (n < params.swingLookback * 2 + 2) return [];
-
-    const events = computeSwingEvents(candles, params.swingLookback);
-    const eventsByBar = new Map<number, SwingEvent[]>();
-    for (const e of events) {
-      const list = eventsByBar.get(e.confirmedAt);
-      if (list) list.push(e);
-      else eventsByBar.set(e.confirmedAt, [e]);
-    }
-
-    const bodySizes = candles.map((c) => Math.abs(c.close - c.open));
-
-    let lastSwingHigh: number | null = null;
-    let lastSwingLow: number | null = null;
-    let structure: "bullish" | "bearish" | "unknown" = "unknown";
-    const pendingOBs: PendingOrderBlock[] = [];
-    const signals: StrategySignal[] = [];
-
-    for (let i = 0; i < n; i++) {
-      const newEvents = eventsByBar.get(i);
-      if (newEvents) {
-        for (const e of newEvents) {
-          if (e.type === "high") lastSwingHigh = e.price;
-          else lastSwingLow = e.price;
-        }
-      }
-
-      const candle = candles[i]!;
-      const windowStart = Math.max(0, i - 20);
-      const avgBody = i > windowStart ? average(bodySizes.slice(windowStart, i)) : 0;
-      const displacementRatio = avgBody > 0 ? bodySizes[i]! / avgBody : 0;
-
-      // 向上突破（CHoCH 或 BOS）
-      if (lastSwingHigh !== null && candle.close > lastSwingHigh) {
-        const isChoch = structure === "bearish";
-        if (displacementRatio >= params.minDisplacementMultiple) {
-          const ob = findBullishOrderBlock(candles, i, params.orderBlockLookback);
-          if (ob) {
-            pendingOBs.push({
-              type: "bullish",
-              high: ob.high,
-              low: ob.low,
-              createdAt: i,
-              isChoch,
-              displacementRatio,
-              reason: isChoch
-                ? `價格突破前波段高點 ${lastSwingHigh.toFixed(4)}，結構由空轉多（CHoCH）`
-                : `價格延續多頭結構，突破前波段高點 ${lastSwingHigh.toFixed(4)}（BOS）`,
-            });
-          }
-        }
-        structure = "bullish";
-        lastSwingHigh = null; // 必須等待下一個新確認的擺動高點才能再次觸發
-      }
-
-      // 向下突破（CHoCH 或 BOS）
-      if (lastSwingLow !== null && candle.close < lastSwingLow) {
-        const isChoch = structure === "bullish";
-        if (displacementRatio >= params.minDisplacementMultiple) {
-          const ob = findBearishOrderBlock(candles, i, params.orderBlockLookback);
-          if (ob) {
-            pendingOBs.push({
-              type: "bearish",
-              high: ob.high,
-              low: ob.low,
-              createdAt: i,
-              isChoch,
-              displacementRatio,
-              reason: isChoch
-                ? `價格跌破前波段低點 ${lastSwingLow.toFixed(4)}，結構由多轉空（CHoCH）`
-                : `價格延續空頭結構，跌破前波段低點 ${lastSwingLow.toFixed(4)}（BOS）`,
-            });
-          }
-        }
-        structure = "bearish";
-        lastSwingLow = null;
-      }
-
-      // 檢查未被回測的訂單塊是否在本根 K 棒被價格回測（進場候選），或已過期失效
-      for (let p = pendingOBs.length - 1; p >= 0; p--) {
-        const ob = pendingOBs[p]!;
-        if (i - ob.createdAt > params.maxMitigationBars) {
-          pendingOBs.splice(p, 1);
-          continue;
-        }
-        if (i === ob.createdAt) continue; // 突破當根不算回測，至少需下一根 K 棒
-
-        const touched = candle.low <= ob.high && candle.high >= ob.low;
-        if (!touched) continue;
-
-        const confidence = Math.round(Math.min(95, 55 + Math.min(25, ob.displacementRatio * 8) + (ob.isChoch ? 10 : 0)));
-        signals.push({
-          time: candle.openTime,
-          symbol: ctx.symbol,
-          interval: ctx.interval,
-          type: ob.type === "bullish" ? "bullish_candidate" : "bearish_candidate",
-          price: candle.close,
-          reason: `${ob.reason}，價格回測訂單塊 ${ob.low.toFixed(4)}~${ob.high.toFixed(4)}`,
-          confidence,
-          params: { ...params },
-        });
-        pendingOBs.splice(p, 1);
-      }
-    }
-
-    return signals;
+    const { touches } = detectOrderBlocks(candles, params);
+    return touches.map(
+      (t): StrategySignal => ({
+        time: t.time,
+        symbol: ctx.symbol,
+        interval: ctx.interval,
+        type: t.type === "bullish" ? "bullish_candidate" : "bearish_candidate",
+        price: t.price,
+        reason: `${t.reason}，價格回測訂單塊 ${t.low.toFixed(4)}~${t.high.toFixed(4)}`,
+        confidence: Math.round(
+          Math.min(
+            95,
+            55 + Math.min(25, t.displacementRatio * 8) + (t.isChoch ? 10 : 0),
+          ),
+        ),
+        params: { ...params },
+      }),
+    );
   },
 };
-
-function average(values: number[]): number {
-  if (values.length === 0) return 0;
-  return values.reduce((a, b) => a + b, 0) / values.length;
-}

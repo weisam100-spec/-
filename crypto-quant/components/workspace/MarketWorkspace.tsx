@@ -23,6 +23,7 @@ import {
   bollinger,
   computeKeyLevels,
   computeTrendlines,
+  computeOrderBlocks,
 } from "@/lib/indicators";
 import {
   strategyRegistry,
@@ -157,6 +158,59 @@ export function MarketWorkspace({
     }
     return lines;
   }, [trendlines]);
+
+  const orderBlocks = useMemo(() => {
+    if (candles.length === 0) return [];
+    return computeOrderBlocks(candles);
+  }, [candles]);
+
+  const orderBlockOverlays = useMemo(() => {
+    const lines: {
+      name: string;
+      color: string;
+      data: { time: number; value: number }[];
+    }[] = [];
+    for (const ob of orderBlocks) {
+      const color = ob.type === "bullish" ? "#16c784" : "#ea3943";
+      const name = `${ob.type === "bullish" ? "多頭" : "空頭"}訂單塊`;
+      // 以上下兩條邊界線＋左右兩條邊界線畫出區塊的矩形外框
+      lines.push(
+        {
+          name,
+          color,
+          data: [
+            { time: ob.startTime, value: ob.high },
+            { time: ob.endTime, value: ob.high },
+          ],
+        },
+        {
+          name,
+          color,
+          data: [
+            { time: ob.startTime, value: ob.low },
+            { time: ob.endTime, value: ob.low },
+          ],
+        },
+        {
+          name,
+          color,
+          data: [
+            { time: ob.startTime, value: ob.low },
+            { time: ob.startTime, value: ob.high },
+          ],
+        },
+        {
+          name,
+          color,
+          data: [
+            { time: ob.endTime, value: ob.low },
+            { time: ob.endTime, value: ob.high },
+          ],
+        },
+      );
+    }
+    return lines;
+  }, [orderBlocks]);
 
   const priceLines = useMemo(
     () =>
@@ -326,7 +380,11 @@ export function MarketWorkspace({
                   <>
                     <CandlestickChart
                       candles={candles}
-                      overlays={[...overlays, ...trendlineOverlays]}
+                      overlays={[
+                        ...overlays,
+                        ...trendlineOverlays,
+                        ...orderBlockOverlays,
+                      ]}
                       signals={showSignals ? signals : []}
                       priceLines={priceLines}
                       height={360}
@@ -457,6 +515,42 @@ export function MarketWorkspace({
                     </span>
                   </li>
                 )}
+              </ul>
+            )}
+          </Card>
+        )}
+
+        {!compact && (
+          <Card className="h-fit">
+            <CardHeader>
+              <CardTitle>訂單塊</CardTitle>
+            </CardHeader>
+            <p className="mb-2 text-xs text-[var(--color-text-muted)]">
+              結構突破當下，帶動突破的那根 K 棒之前最後一根反方向 K
+              棒的高低區間（SMC
+              策略同一套規則），只列出目前仍未被價格回測、也還沒超過有效期的區塊，純屬歷史價格結構標示，不是訊號也不是預測。
+            </p>
+            {orderBlocks.length === 0 ? (
+              <EmptyState message="目前沒有偵測到仍然有效的訂單塊" />
+            ) : (
+              <ul className="flex flex-col gap-1">
+                {orderBlocks.map((ob, i) => (
+                  <li
+                    key={i}
+                    className="flex items-center justify-between rounded-md border border-[var(--color-border)] px-2 py-1 text-xs"
+                  >
+                    <span className={ob.type === "bullish" ? "pos" : "neg"}>
+                      {ob.type === "bullish" ? "多頭" : "空頭"}訂單塊
+                    </span>
+                    <span className="text-[var(--color-text-muted)]">
+                      {formatUsdt(ob.low, { decimals: 2 })} ~{" "}
+                      {formatUsdt(ob.high, { decimals: 2 })}
+                    </span>
+                    <span className="text-[var(--color-text-muted)]">
+                      {ob.isChoch ? "CHoCH" : "BOS"}
+                    </span>
+                  </li>
+                ))}
               </ul>
             )}
           </Card>
