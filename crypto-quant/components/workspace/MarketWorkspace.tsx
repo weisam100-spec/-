@@ -22,6 +22,7 @@ import {
   rsi as rsiFn,
   bollinger,
   computeKeyLevels,
+  computeTrendlines,
 } from "@/lib/indicators";
 import {
   strategyRegistry,
@@ -120,6 +121,42 @@ export function MarketWorkspace({
     if (candles.length === 0) return [];
     return computeKeyLevels(candles);
   }, [candles]);
+
+  const trendlines = useMemo(() => {
+    if (candles.length === 0) return { uptrend: null, downtrend: null };
+    return computeTrendlines(candles);
+  }, [candles]);
+
+  const trendlineOverlays = useMemo(() => {
+    const lines: {
+      name: string;
+      color: string;
+      data: { time: number; value: number }[];
+    }[] = [];
+    if (trendlines.uptrend) {
+      const t = trendlines.uptrend;
+      lines.push({
+        name: "上升趨勢線",
+        color: "#16c784",
+        data: [
+          { time: t.startTime, value: t.startPrice },
+          { time: t.endTime, value: t.endPrice },
+        ],
+      });
+    }
+    if (trendlines.downtrend) {
+      const t = trendlines.downtrend;
+      lines.push({
+        name: "下降趨勢線",
+        color: "#ea3943",
+        data: [
+          { time: t.startTime, value: t.startPrice },
+          { time: t.endTime, value: t.endPrice },
+        ],
+      });
+    }
+    return lines;
+  }, [trendlines]);
 
   const priceLines = useMemo(
     () =>
@@ -289,7 +326,7 @@ export function MarketWorkspace({
                   <>
                     <CandlestickChart
                       candles={candles}
-                      overlays={overlays}
+                      overlays={[...overlays, ...trendlineOverlays]}
                       signals={showSignals ? signals : []}
                       priceLines={priceLines}
                       height={360}
@@ -361,6 +398,65 @@ export function MarketWorkspace({
                     </span>
                   </li>
                 ))}
+              </ul>
+            )}
+          </Card>
+        )}
+
+        {!compact && (
+          <Card className="h-fit">
+            <CardHeader>
+              <CardTitle>趨勢線</CardTitle>
+            </CardHeader>
+            <p className="mb-2 text-xs text-[var(--color-text-muted)]">
+              連接尚未被跌破的擺動低點／尚未被站上的擺動高點畫出的直線，純屬歷史價格結構的幾何描繪，不是預測，價格隨時可能突破或跌破。
+            </p>
+            {!trendlines.uptrend && !trendlines.downtrend ? (
+              <EmptyState message="目前沒有偵測到有效的上升或下降趨勢線" />
+            ) : (
+              <ul className="flex flex-col gap-1">
+                {trendlines.uptrend && (
+                  <li className="flex items-center justify-between rounded-md border border-[var(--color-border)] px-2 py-1 text-xs">
+                    <span className="pos">上升趨勢線</span>
+                    <span className="text-[var(--color-text-muted)]">
+                      {formatUsdt(trendlines.uptrend.startPrice, {
+                        decimals: 2,
+                      })}{" "}
+                      →{" "}
+                      {formatUsdt(trendlines.uptrend.endPrice, { decimals: 2 })}
+                    </span>
+                    <span className="text-[var(--color-text-muted)]">
+                      {trendlines.uptrend.strength === "strong"
+                        ? "強"
+                        : trendlines.uptrend.strength === "medium"
+                          ? "中"
+                          : "弱"}
+                      （{trendlines.uptrend.touchCount} 點）
+                    </span>
+                  </li>
+                )}
+                {trendlines.downtrend && (
+                  <li className="flex items-center justify-between rounded-md border border-[var(--color-border)] px-2 py-1 text-xs">
+                    <span className="neg">下降趨勢線</span>
+                    <span className="text-[var(--color-text-muted)]">
+                      {formatUsdt(trendlines.downtrend.startPrice, {
+                        decimals: 2,
+                      })}{" "}
+                      →{" "}
+                      {formatUsdt(trendlines.downtrend.endPrice, {
+                        decimals: 2,
+                      })}
+                    </span>
+                    <span className="text-[var(--color-text-muted)]">
+                      {trendlines.downtrend.strength === "strong"
+                        ? "強"
+                        : trendlines.downtrend.strength === "medium"
+                          ? "中"
+                          : "弱"}
+                      （{trendlines.downtrend.touchCount} 點）
+                    </span>
+                  </li>
+                )}
               </ul>
             )}
           </Card>

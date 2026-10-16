@@ -5,6 +5,7 @@ export * from "./bollinger";
 export * from "./volatility";
 export * from "./vwap";
 export * from "./supportResistance";
+export * from "./trendlines";
 
 /** 成交量相對於過去均量的比值，>1 代表量能放大 */
 export function volumeRatio(volumes: number[], period = 20): number[] {
