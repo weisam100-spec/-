@@ -24,6 +24,7 @@ import {
   computeKeyLevels,
   computeTrendlines,
   computeOrderBlocks,
+  computeFibonacciRetracement,
 } from "@/lib/indicators";
 import {
   strategyRegistry,
@@ -212,15 +213,24 @@ export function MarketWorkspace({
     return lines;
   }, [orderBlocks]);
 
-  const priceLines = useMemo(
-    () =>
-      keyLevels.map((l) => ({
-        price: l.price,
-        color: l.type === "resistance" ? "#ea3943" : "#16c784",
-        title: `${l.type === "resistance" ? "壓力" : "支撐"} ${formatUsdt(l.price, { decimals: 2 })}`,
-      })),
-    [keyLevels],
-  );
+  const fibonacci = useMemo(() => {
+    if (candles.length === 0) return null;
+    return computeFibonacciRetracement(candles);
+  }, [candles]);
+
+  const priceLines = useMemo(() => {
+    const keyLevelLines = keyLevels.map((l) => ({
+      price: l.price,
+      color: l.type === "resistance" ? "#ea3943" : "#16c784",
+      title: `${l.type === "resistance" ? "壓力" : "支撐"} ${formatUsdt(l.price, { decimals: 2 })}`,
+    }));
+    const fibLines = (fibonacci?.levels ?? []).map((l) => ({
+      price: l.price,
+      color: "#c9a227",
+      title: `Fib ${l.label} ${formatUsdt(l.price, { decimals: 2 })}`,
+    }));
+    return [...keyLevelLines, ...fibLines];
+  }, [keyLevels, fibonacci]);
 
   const rsiSeries = useMemo(
     () =>
@@ -552,6 +562,45 @@ export function MarketWorkspace({
                   </li>
                 ))}
               </ul>
+            )}
+          </Card>
+        )}
+
+        {!compact && (
+          <Card className="h-fit">
+            <CardHeader>
+              <CardTitle>斐波那契回檔</CardTitle>
+            </CardHeader>
+            <p className="mb-2 text-xs text-[var(--color-text-muted)]">
+              依近期視窗內的最高點與最低點，以標準比例（23.6% / 38.2% / 50% /
+              61.8% /
+              78.6%）切出水平線，純屬幾何計算，不是預測，也不保證價格會在這些價位反應。
+            </p>
+            {!fibonacci ? (
+              <EmptyState message="資料量不足，暫無法計算" />
+            ) : (
+              <>
+                <p className="mb-2 text-xs text-[var(--color-text-muted)]">
+                  {fibonacci.direction === "retracement_down"
+                    ? "近期走勢偏多頭，測量拉回支撐"
+                    : "近期走勢偏空頭，測量反彈壓力"}
+                  ： {formatUsdt(fibonacci.anchorLowPrice, { decimals: 2 })} ~{" "}
+                  {formatUsdt(fibonacci.anchorHighPrice, { decimals: 2 })}
+                </p>
+                <ul className="flex flex-col gap-1">
+                  {fibonacci.levels.map((l, i) => (
+                    <li
+                      key={i}
+                      className="flex items-center justify-between rounded-md border border-[var(--color-border)] px-2 py-1 text-xs"
+                    >
+                      <span className="text-[#c9a227]">{l.label}</span>
+                      <span className="font-medium text-[var(--color-text)]">
+                        {formatUsdt(l.price, { decimals: 2 })}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </>
             )}
           </Card>
         )}
