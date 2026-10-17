@@ -572,9 +572,9 @@ export function MarketWorkspace({
               <CardTitle>斐波那契回檔</CardTitle>
             </CardHeader>
             <p className="mb-2 text-xs text-[var(--color-text-muted)]">
-              依近期視窗內的最高點與最低點，以標準比例（23.6% / 38.2% / 50% /
-              61.8% /
-              78.6%）切出水平線，純屬幾何計算，不是預測，也不保證價格會在這些價位反應。
+              依近期視窗內的最高點與最低點，以 4 個核心比例（23.6% / 38.2% / 50%
+              /
+              61.8%）切出水平線，純屬幾何計算，不是預測，也不保證價格會在這些價位反應。
             </p>
             {!fibonacci ? (
               <EmptyState message="資料量不足，暫無法計算" />

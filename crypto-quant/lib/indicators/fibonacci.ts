@@ -21,11 +21,11 @@ export interface FibonacciRetracement {
   levels: FibonacciLevel[];
 }
 
-const DEFAULT_RATIOS = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1];
+const DEFAULT_RATIOS = [0.236, 0.382, 0.5, 0.618];
 
 /**
- * 自動抓取「近期視窗內」的最高點與最低點，以兩者之間的價格區間畫出標準費波那契回檔水平線
- * （0% / 23.6% / 38.2% / 50% / 61.8% / 78.6% / 100%）。
+ * 自動抓取「近期視窗內」的最高點與最低點，以兩者之間的價格區間畫出 4 個核心費波那契回檔水平線
+ * （23.6% / 38.2% / 50% / 61.8%）。
  * 純屬依既定公式對歷史高低點做幾何切割，不是預測，也不保證價格會在這些價位反應。
  */
 export function computeFibonacciRetracement(

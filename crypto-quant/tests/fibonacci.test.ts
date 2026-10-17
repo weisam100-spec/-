@@ -11,11 +11,12 @@ describe("computeFibonacciRetracement", () => {
     expect(computeFibonacciRetracement(candles)).toBeNull();
   });
 
-  it("近期走勢為上升段（低點在前、高點在後）時，0% 對應高點、100% 對應低點", () => {
+  it("近期走勢為上升段（低點在前、高點在後）時，以高點、低點為兩端計算回檔", () => {
     const closes = [100, 95, 90, 95, 100, 110, 120, 130, 125, 128]; // 低點在 idx2(90)，高點在 idx7(130)
     const candles = buildCandlesFromCloses(closes);
     const result = computeFibonacciRetracement(candles, {
       lookback: closes.length,
+      ratios: [0, 1],
     });
     expect(result).not.toBeNull();
     expect(result!.direction).toBe("retracement_down");
@@ -25,11 +26,12 @@ describe("computeFibonacciRetracement", () => {
     expect(level100.price).toBeCloseTo(result!.anchorLowPrice, 6);
   });
 
-  it("近期走勢為下降段（高點在前、低點在後）時，0% 對應低點、100% 對應高點", () => {
+  it("近期走勢為下降段（高點在前、低點在後）時，以低點、高點為兩端計算回檔", () => {
     const closes = [100, 110, 120, 130, 125, 120, 110, 100, 90, 95]; // 高點在 idx3(130)，低點在 idx8(90)
     const candles = buildCandlesFromCloses(closes);
     const result = computeFibonacciRetracement(candles, {
       lookback: closes.length,
+      ratios: [0, 1],
     });
     expect(result).not.toBeNull();
     expect(result!.direction).toBe("retracement_up");
@@ -51,12 +53,12 @@ describe("computeFibonacciRetracement", () => {
     }
   });
 
-  it("預設回傳標準的 7 個比例水平", () => {
+  it("預設回傳 4 個核心比例水平", () => {
     const candles = buildNoisyCandles(300, 4);
     const result = computeFibonacciRetracement(candles);
     expect(result).not.toBeNull();
     const ratios = result!.levels.map((l) => l.ratio);
-    expect(ratios).toEqual([0, 0.236, 0.382, 0.5, 0.618, 0.786, 1]);
+    expect(ratios).toEqual([0.236, 0.382, 0.5, 0.618]);
   });
 
   it("完全沒有波動（高低點相同）時回傳 null", () => {
