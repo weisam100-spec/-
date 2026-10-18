@@ -6,7 +6,11 @@ import type { SymbolMeta, Interval } from "@/lib/market/symbols";
 import type { Candle, ProviderResult, Ticker24h } from "@/lib/market/types";
 import type { FxRate } from "@/lib/market/fx";
 import type { StrategyId } from "@/lib/strategies/registry";
-import type { BacktestConfig, EquityPoint, TradeRecord } from "@/lib/backtest/types";
+import type {
+  BacktestConfig,
+  EquityPoint,
+  TradeRecord,
+} from "@/lib/backtest/types";
 import type { PerformanceMetrics } from "@/lib/backtest/metrics";
 import type { StrategyConfigRecord } from "@/lib/storage/strategyConfigRepo";
 import type { WatchlistItem } from "@/lib/storage/watchlistRepo";
@@ -15,7 +19,11 @@ import type { PortfolioSnapshot } from "@/lib/storage/portfolioRepo";
 export function useSymbols() {
   return useQuery({
     queryKey: ["symbols"],
-    queryFn: () => apiGet<{ symbols: SymbolMeta[]; intervals: { id: Interval; label: string }[] }>("/api/symbols"),
+    queryFn: () =>
+      apiGet<{
+        symbols: SymbolMeta[];
+        intervals: { id: Interval; label: string }[];
+      }>("/api/symbols"),
     staleTime: Infinity,
   });
 }
@@ -24,31 +32,62 @@ export function useStrategyList() {
   return useQuery({
     queryKey: ["strategies"],
     queryFn: () =>
-      apiGet<{ strategies: { id: StrategyId; name: string; description: string; defaultParams: Record<string, unknown> }[] }>(
-        "/api/strategies",
-      ),
+      apiGet<{
+        strategies: {
+          id: StrategyId;
+          name: string;
+          description: string;
+          defaultParams: Record<string, unknown>;
+        }[];
+      }>("/api/strategies"),
     staleTime: Infinity,
   });
 }
 
-export function useTicker(symbol: string, options?: { refetchIntervalMs?: number }) {
+export function useTicker(
+  symbol: string,
+  options?: { refetchIntervalMs?: number },
+) {
   return useQuery({
     queryKey: ["ticker", symbol],
-    queryFn: () => apiGet<ProviderResult<Ticker24h>>(`/api/market/ticker?symbol=${symbol}`),
+    queryFn: () =>
+      apiGet<ProviderResult<Ticker24h>>(`/api/market/ticker?symbol=${symbol}`),
     refetchInterval: options?.refetchIntervalMs ?? 20_000,
   });
 }
 
-export function useKlines(symbol: string, interval: Interval, limit = 500) {
+export type KlinesParams =
+  | { limit: number }
+  | { startTime: number; endTime: number };
+
+export function useKlines(
+  symbol: string,
+  interval: Interval,
+  params: KlinesParams = { limit: 500 },
+) {
+  const isRange = "startTime" in params;
+  const queryKey = isRange
+    ? ["klines", symbol, interval, "range", params.startTime, params.endTime]
+    : ["klines", symbol, interval, "limit", params.limit];
+  const query = isRange
+    ? `startTime=${params.startTime}&endTime=${params.endTime}`
+    : `limit=${params.limit}`;
   return useQuery({
-    queryKey: ["klines", symbol, interval, limit],
-    queryFn: () => apiGet<ProviderResult<Candle[]>>(`/api/market/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`),
+    queryKey,
+    queryFn: () =>
+      apiGet<ProviderResult<Candle[]>>(
+        `/api/market/klines?symbol=${symbol}&interval=${interval}&${query}`,
+      ),
     refetchInterval: 60_000,
   });
 }
 
 export function useFxRate() {
-  return useQuery({ queryKey: ["fx"], queryFn: () => apiGet<FxRate>("/api/fx"), staleTime: 60_000 });
+  return useQuery({
+    queryKey: ["fx"],
+    queryFn: () => apiGet<FxRate>("/api/fx"),
+    staleTime: 60_000,
+  });
 }
 
 export interface BacktestRunResponse {
@@ -91,18 +130,34 @@ export function useRunCompare() {
       symbol: string;
       interval: Interval;
       config: BacktestConfig;
-      strategies: { strategyId: StrategyId; strategyParams: Record<string, unknown>; label?: string }[];
+      strategies: {
+        strategyId: StrategyId;
+        strategyParams: Record<string, unknown>;
+        label?: string;
+      }[];
     }) =>
-      apiPost<{ dataSource: string; freshness: string; usedCandles: number; comparisons: CompareEntry[]; disclaimer: string }>(
-        "/api/backtest/compare",
-        payload,
-      ),
+      apiPost<{
+        dataSource: string;
+        freshness: string;
+        usedCandles: number;
+        comparisons: CompareEntry[];
+        disclaimer: string;
+      }>("/api/backtest/compare", payload),
   });
 }
 
 export function useRunSensitivity() {
   return useMutation({
-    mutationFn: (payload: unknown) => apiPost<{ cells: { xValue: number; yValue: number; metricValue: number | null; tradeCount: number }[]; warnings: string[] }>("/api/backtest/sensitivity", payload),
+    mutationFn: (payload: unknown) =>
+      apiPost<{
+        cells: {
+          xValue: number;
+          yValue: number;
+          metricValue: number | null;
+          tradeCount: number;
+        }[];
+        warnings: string[];
+      }>("/api/backtest/sensitivity", payload),
   });
 }
 
@@ -169,7 +224,11 @@ export interface PortfolioCombinedMetrics {
 
 export interface PortfolioBacktestResponse {
   legs: PortfolioLegOutput[];
-  combinedEquityCurve: { time: number; equity: number; buyHoldEquity: number }[];
+  combinedEquityCurve: {
+    time: number;
+    equity: number;
+    buyHoldEquity: number;
+  }[];
   combinedMetrics: PortfolioCombinedMetrics;
   correlations: { legA: string; legB: string; correlation: number | null }[];
   warnings: string[];
@@ -178,21 +237,27 @@ export interface PortfolioBacktestResponse {
 
 export function useRunPortfolioBacktest() {
   return useMutation({
-    mutationFn: (payload: unknown) => apiPost<PortfolioBacktestResponse>("/api/backtest/portfolio", payload),
+    mutationFn: (payload: unknown) =>
+      apiPost<PortfolioBacktestResponse>("/api/backtest/portfolio", payload),
   });
 }
 
 export function useStrategyConfigs() {
   return useQuery({
     queryKey: ["strategy-configs"],
-    queryFn: () => apiGet<{ configs: StrategyConfigRecord[] }>("/api/strategy-configs"),
+    queryFn: () =>
+      apiGet<{ configs: StrategyConfigRecord[] }>("/api/strategy-configs"),
   });
 }
 
 export function useCreateStrategyConfig() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (payload: unknown) => apiPost<{ config: StrategyConfigRecord }>("/api/strategy-configs", payload),
+    mutationFn: (payload: unknown) =>
+      apiPost<{ config: StrategyConfigRecord }>(
+        "/api/strategy-configs",
+        payload,
+      ),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["strategy-configs"] }),
   });
 }
@@ -201,7 +266,10 @@ export function useUpdateStrategyConfig() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, patch }: { id: string; patch: unknown }) =>
-      apiPatch<{ config: StrategyConfigRecord }>(`/api/strategy-configs/${id}`, patch),
+      apiPatch<{ config: StrategyConfigRecord }>(
+        `/api/strategy-configs/${id}`,
+        patch,
+      ),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["strategy-configs"] }),
   });
 }
@@ -209,7 +277,8 @@ export function useUpdateStrategyConfig() {
 export function useDeleteStrategyConfig() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => apiDelete<{ deleted: boolean }>(`/api/strategy-configs/${id}`),
+    mutationFn: (id: string) =>
+      apiDelete<{ deleted: boolean }>(`/api/strategy-configs/${id}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["strategy-configs"] }),
   });
 }
@@ -217,19 +286,27 @@ export function useDeleteStrategyConfig() {
 export function useDuplicateStrategyConfig() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => apiPost<{ config: StrategyConfigRecord }>(`/api/strategy-configs/${id}/duplicate`, {}),
+    mutationFn: (id: string) =>
+      apiPost<{ config: StrategyConfigRecord }>(
+        `/api/strategy-configs/${id}/duplicate`,
+        {},
+      ),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["strategy-configs"] }),
   });
 }
 
 export function useWatchlist() {
-  return useQuery({ queryKey: ["watchlist"], queryFn: () => apiGet<{ items: WatchlistItem[] }>("/api/watchlist") });
+  return useQuery({
+    queryKey: ["watchlist"],
+    queryFn: () => apiGet<{ items: WatchlistItem[] }>("/api/watchlist"),
+  });
 }
 
 export function useAddWatchlist() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (payload: { symbol: string; note?: string }) => apiPost<{ item: WatchlistItem }>("/api/watchlist", payload),
+    mutationFn: (payload: { symbol: string; note?: string }) =>
+      apiPost<{ item: WatchlistItem }>("/api/watchlist", payload),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["watchlist"] }),
   });
 }
@@ -237,19 +314,26 @@ export function useAddWatchlist() {
 export function useRemoveWatchlist() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => apiDelete<{ deleted: boolean }>(`/api/watchlist/${id}`),
+    mutationFn: (id: string) =>
+      apiDelete<{ deleted: boolean }>(`/api/watchlist/${id}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["watchlist"] }),
   });
 }
 
 export function usePortfolio() {
-  return useQuery({ queryKey: ["portfolio"], queryFn: () => apiGet<{ portfolio: PortfolioSnapshot }>("/api/portfolio") });
+  return useQuery({
+    queryKey: ["portfolio"],
+    queryFn: () => apiGet<{ portfolio: PortfolioSnapshot }>("/api/portfolio"),
+  });
 }
 
 export function useResetPortfolio() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (initialCashUsdt?: number) => apiPost<{ portfolio: PortfolioSnapshot }>("/api/portfolio", { initialCashUsdt }),
+    mutationFn: (initialCashUsdt?: number) =>
+      apiPost<{ portfolio: PortfolioSnapshot }>("/api/portfolio", {
+        initialCashUsdt,
+      }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["portfolio"] }),
   });
 }
@@ -270,15 +354,21 @@ export interface NotificationSettingsData {
 export function useNotificationSettings() {
   return useQuery({
     queryKey: ["notification-settings"],
-    queryFn: () => apiGet<NotificationSettingsData>("/api/notifications/settings"),
+    queryFn: () =>
+      apiGet<NotificationSettingsData>("/api/notifications/settings"),
   });
 }
 
 export function useUpdateNotificationSettings() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (patch: unknown) => apiPut<{ settings: NotificationSettingsData["settings"] }>("/api/notifications/settings", patch),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["notification-settings"] }),
+    mutationFn: (patch: unknown) =>
+      apiPut<{ settings: NotificationSettingsData["settings"] }>(
+        "/api/notifications/settings",
+        patch,
+      ),
+    onSuccess: () =>
+      qc.invalidateQueries({ queryKey: ["notification-settings"] }),
   });
 }
 
@@ -292,8 +382,16 @@ export function useSendTestNotification() {
 export function usePaperTrade() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (payload: { symbol: string; side: "buy" | "sell"; quantity: number; priceUsdt: number }) =>
-      apiPost<{ portfolio: PortfolioSnapshot }>("/api/portfolio/trade", payload),
+    mutationFn: (payload: {
+      symbol: string;
+      side: "buy" | "sell";
+      quantity: number;
+      priceUsdt: number;
+    }) =>
+      apiPost<{ portfolio: PortfolioSnapshot }>(
+        "/api/portfolio/trade",
+        payload,
+      ),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["portfolio"] }),
   });
 }

@@ -25,6 +25,7 @@ import {
   computeTrendlines,
   computeOrderBlocks,
   computeFibonacciRetracement,
+  computeLevelReactionStats,
 } from "@/lib/indicators";
 import {
   strategyRegistry,
@@ -37,6 +38,26 @@ import {
   type Interval,
 } from "@/lib/market/symbols";
 import { formatDateTime, formatUsdt, formatPercent } from "@/lib/format";
+import type { KlinesParams } from "@/lib/client/hooks";
+
+type HistoryRange = "count" | "7d" | "1m" | "3m" | "6m" | "1y";
+
+const HISTORY_RANGE_LABEL: Record<HistoryRange, string> = {
+  count: "最新 500 根 K 棒",
+  "7d": "近 7 天",
+  "1m": "近 1 個月",
+  "3m": "近 3 個月",
+  "6m": "近 6 個月",
+  "1y": "近 1 年",
+};
+
+const HISTORY_RANGE_DAYS: Record<Exclude<HistoryRange, "count">, number> = {
+  "7d": 7,
+  "1m": 30,
+  "3m": 90,
+  "6m": 182,
+  "1y": 365,
+};
 
 export function MarketWorkspace({
   compact = false,
@@ -51,12 +72,19 @@ export function MarketWorkspace({
   const [strategyId, setStrategyId] = useState<StrategyId>("ema-trend");
   const [showSignals, setShowSignals] = useState(true);
   const [expandedSignal, setExpandedSignal] = useState<number | null>(null);
+  const [historyRange, setHistoryRange] = useState<HistoryRange>("count");
 
-  const limit = compact ? 200 : 500;
+  const klinesParams: KlinesParams = useMemo(() => {
+    if (historyRange === "count") return { limit: compact ? 200 : 500 };
+    const days = HISTORY_RANGE_DAYS[historyRange];
+    const endTime = Date.now();
+    return { startTime: endTime - days * 24 * 60 * 60 * 1000, endTime };
+  }, [historyRange, compact]);
+
   const { data, isLoading, isError, error, refetch } = useKlines(
     symbol,
     interval,
-    limit,
+    klinesParams,
   );
 
   const candles = useMemo(() => data?.data ?? [], [data]);
@@ -123,6 +151,11 @@ export function MarketWorkspace({
     if (candles.length === 0) return [];
     return computeKeyLevels(candles);
   }, [candles]);
+
+  const levelReactionStats = useMemo(() => {
+    if (candles.length === 0 || keyLevels.length === 0) return [];
+    return computeLevelReactionStats(candles, keyLevels);
+  }, [candles, keyLevels]);
 
   const trendlines = useMemo(() => {
     if (candles.length === 0) return { uptrend: null, downtrend: null };
@@ -267,6 +300,22 @@ export function MarketWorkspace({
                 </option>
               ))}
             </Select>
+            <Select
+              value={historyRange}
+              onChange={(e) => setHistoryRange(e.target.value as HistoryRange)}
+            >
+              {(Object.keys(HISTORY_RANGE_LABEL) as HistoryRange[]).map((r) => (
+                <option key={r} value={r}>
+                  {HISTORY_RANGE_LABEL[r]}
+                </option>
+              ))}
+            </Select>
+            {historyRange !== "count" && (
+              <p className="text-[11px] text-[var(--color-text-muted)]">
+                週期較細（如 5
+                分鐘）選較長區間時，實際能抓到的資料可能不足所選天數，會自動改顯示能抓到的最新一段。
+              </p>
+            )}
             <Select
               value={strategyId}
               onChange={(e) => setStrategyId(e.target.value as StrategyId)}
@@ -421,36 +470,57 @@ export function MarketWorkspace({
               <CardTitle>關鍵價位（支撐／壓力）</CardTitle>
             </CardHeader>
             <p className="mb-2 text-xs text-[var(--color-text-muted)]">
-              依歷史擺動高/低點聚合而成，觸及次數越多代表該價位歷史上越常被市場認可，純屬統計結果，不是預測也不保證價格到了就會反轉或突破。
+              依歷史擺動高/低點聚合而成，觸及次數越多代表該價位歷史上越常被市場認可，純屬統計結果，不是預測也不保證價格到了就會反轉或突破。「歷史上漲比例」是統計過去每次價格觸及該價位後，往後數{" "}
+              {levelReactionStats[0]?.lookForwardBars ?? 10} 根 K
+              棒收盤價較觸及當下更高的次數佔比，同樣是事後統計，不是對下一次的預測，樣本數太少時僅供參考。
             </p>
             {keyLevels.length === 0 ? (
               <EmptyState message="資料量不足，暫無法判斷關鍵價位" />
             ) : (
-              <ul className="flex flex-col gap-1">
-                {keyLevels.map((l, i) => (
-                  <li
-                    key={i}
-                    className="flex items-center justify-between rounded-md border border-[var(--color-border)] px-2 py-1 text-xs"
-                  >
-                    <span className={l.type === "resistance" ? "neg" : "pos"}>
-                      {l.type === "resistance" ? "壓力" : "支撐"}
-                    </span>
-                    <span className="font-medium text-[var(--color-text)]">
-                      {formatUsdt(l.price, { decimals: 2 })}
-                    </span>
-                    <span className="text-[var(--color-text-muted)]">
-                      {formatPercent(l.distancePct)}
-                    </span>
-                    <span className="text-[var(--color-text-muted)]">
-                      {l.strength === "strong"
-                        ? "強"
-                        : l.strength === "medium"
-                          ? "中"
-                          : "弱"}
-                      （{l.touchCount} 次）
-                    </span>
-                  </li>
-                ))}
+              <ul className="flex flex-col gap-2">
+                {keyLevels.map((l, i) => {
+                  const stats = levelReactionStats[i];
+                  return (
+                    <li
+                      key={i}
+                      className="rounded-md border border-[var(--color-border)] px-2 py-1 text-xs"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span
+                          className={l.type === "resistance" ? "neg" : "pos"}
+                        >
+                          {l.type === "resistance" ? "壓力" : "支撐"}
+                        </span>
+                        <span className="font-medium text-[var(--color-text)]">
+                          {formatUsdt(l.price, { decimals: 2 })}
+                        </span>
+                        <span className="text-[var(--color-text-muted)]">
+                          {formatPercent(l.distancePct)}
+                        </span>
+                        <span className="text-[var(--color-text-muted)]">
+                          {l.strength === "strong"
+                            ? "強"
+                            : l.strength === "medium"
+                              ? "中"
+                              : "弱"}
+                          （{l.touchCount} 次）
+                        </span>
+                      </div>
+                      <div className="mt-1 flex items-center justify-between text-[var(--color-text-muted)]">
+                        <span>歷史上漲比例</span>
+                        {stats && stats.touchCount > 0 ? (
+                          <span>
+                            {stats.upProbabilityPct!.toFixed(0)}%（
+                            {stats.touchCount} 次樣本
+                            {stats.touchCount < 3 ? "，樣本過少僅供參考" : ""}）
+                          </span>
+                        ) : (
+                          <span>尚無歷史觸及樣本</span>
+                        )}
+                      </div>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </Card>

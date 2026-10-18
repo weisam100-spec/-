@@ -17,6 +17,8 @@ export const env = {
   databaseFile: process.env.DATABASE_FILE ?? "./data/app.db",
   cacheTtlTickerSeconds: num(process.env.CACHE_TTL_TICKER_SECONDS, 15),
   cacheTtlKlinesSeconds: num(process.env.CACHE_TTL_KLINES_SECONDS, 60),
+  /** 行情頁「歷史區間」模式單次最多抓取的 K 棒數，避免過度細的週期選到過長區間時請求失控 */
+  marketChartMaxBars: num(process.env.MARKET_CHART_MAX_BARS, 2000),
   fetchMaxRetries: num(process.env.FETCH_MAX_RETRIES, 3),
   fetchRetryBaseMs: num(process.env.FETCH_RETRY_BASE_MS, 500),
   rateLimitPerMinute: num(process.env.RATE_LIMIT_PER_MINUTE, 60),
