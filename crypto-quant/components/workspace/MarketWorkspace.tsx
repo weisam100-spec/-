@@ -174,7 +174,8 @@ export function MarketWorkspace({
     for (const ob of orderBlocks) {
       const color = ob.type === "bullish" ? "#16c784" : "#ea3943";
       const name = `${ob.type === "bullish" ? "多頭" : "空頭"}訂單塊`;
-      // 以上下兩條邊界線＋左右兩條邊界線畫出區塊的矩形外框
+      // 以上下兩條邊界線標示區塊範圍。lightweight-charts 的 LineSeries 要求資料點時間嚴格遞增，
+      // 不支援同一時間點垂直畫線，因此左右邊界不畫，只畫上下兩條水平邊界線。
       lines.push(
         {
           name,
@@ -190,22 +191,6 @@ export function MarketWorkspace({
           data: [
             { time: ob.startTime, value: ob.low },
             { time: ob.endTime, value: ob.low },
-          ],
-        },
-        {
-          name,
-          color,
-          data: [
-            { time: ob.startTime, value: ob.low },
-            { time: ob.startTime, value: ob.high },
-          ],
-        },
-        {
-          name,
-          color,
-          data: [
-            { time: ob.endTime, value: ob.low },
-            { time: ob.endTime, value: ob.high },
           ],
         },
       );

@@ -24,12 +24,18 @@ export function computeOrderBlocks(
   if (candles.length === 0) return [];
   const { active } = detectOrderBlocks(candles, smcDefaultParams);
   const lastTime = candles[candles.length - 1]!.openTime;
-  return active.slice(-maxBlocks).map((ob) => ({
-    type: ob.type,
-    low: ob.low,
-    high: ob.high,
-    startTime: ob.createdAtTime,
-    endTime: lastTime,
-    isChoch: ob.isChoch,
-  }));
+  return (
+    active
+      // 剛好在最新一根 K 棒才建立的訂單塊，起訖時間會相同（尚無法畫出範圍），下一根 K 棒出現後才顯示
+      .filter((ob) => ob.createdAtTime < lastTime)
+      .slice(-maxBlocks)
+      .map((ob) => ({
+        type: ob.type,
+        low: ob.low,
+        high: ob.high,
+        startTime: ob.createdAtTime,
+        endTime: lastTime,
+        isChoch: ob.isChoch,
+      }))
+  );
 }
