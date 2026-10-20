@@ -22,6 +22,7 @@ const STRATEGY_GRID_KEY: Record<string, string> = {
   "rsi-divergence-structure": "swingLookback",
   "vwap-pullback": "minBiasBars",
   "false-breakout-reclaim": "lookbackPeriod",
+  "daily-reference-line": "cooldownBars",
 };
 
 function parseValues(input: string): number[] {

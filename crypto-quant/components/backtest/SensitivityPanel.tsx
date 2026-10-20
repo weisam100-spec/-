@@ -62,6 +62,10 @@ const STRATEGY_AXIS_OPTIONS: Record<string, { key: string; label: string }[]> = 
     { key: "lookbackPeriod", label: "支撐／壓力觀察根數" },
     { key: "maxReclaimBars", label: "收回確認根數" },
   ],
+  "daily-reference-line": [
+    { key: "anchorHour", label: "基準時間（小時）" },
+    { key: "cooldownBars", label: "訊號冷卻根數" },
+  ],
 };
 
 const CONFIG_AXIS_OPTIONS = [

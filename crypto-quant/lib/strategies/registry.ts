@@ -11,6 +11,7 @@ import { bollingerRsiReversionStrategy, type BollingerRsiReversionParams } from 
 import { rsiDivergenceStructureStrategy, type RsiDivergenceStructureParams } from "./rsiDivergenceStructure";
 import { vwapPullbackStrategy, type VwapPullbackParams } from "./vwapPullback";
 import { falseBreakoutReclaimStrategy, type FalseBreakoutReclaimParams } from "./falseBreakoutReclaim";
+import { dailyReferenceLineStrategy, type DailyReferenceLineParams } from "./dailyReferenceLine";
 import type { Strategy } from "./types";
 
 // 策略註冊表：未來新增突破策略、網格策略、動能策略或機器學習模型，
@@ -29,6 +30,7 @@ export const strategyRegistry = {
   "rsi-divergence-structure": rsiDivergenceStructureStrategy,
   "vwap-pullback": vwapPullbackStrategy,
   "false-breakout-reclaim": falseBreakoutReclaimStrategy,
+  "daily-reference-line": dailyReferenceLineStrategy,
 } satisfies Record<string, Strategy<Record<string, unknown>>>;
 
 export type StrategyId = keyof typeof strategyRegistry;
@@ -47,6 +49,7 @@ export type StrategyParamsMap = {
   "rsi-divergence-structure": RsiDivergenceStructureParams;
   "vwap-pullback": VwapPullbackParams;
   "false-breakout-reclaim": FalseBreakoutReclaimParams;
+  "daily-reference-line": DailyReferenceLineParams;
 };
 
 export function isStrategyId(id: string): id is StrategyId {
@@ -84,6 +87,7 @@ export {
   rsiDivergenceStructureStrategy,
   vwapPullbackStrategy,
   falseBreakoutReclaimStrategy,
+  dailyReferenceLineStrategy,
 };
 export type {
   EmaTrendParams,
@@ -99,5 +103,6 @@ export type {
   RsiDivergenceStructureParams,
   VwapPullbackParams,
   FalseBreakoutReclaimParams,
+  DailyReferenceLineParams,
 };
 export * from "./types";

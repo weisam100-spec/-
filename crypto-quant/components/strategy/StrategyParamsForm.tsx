@@ -211,6 +211,23 @@ export function StrategyParamsForm({
         </>
       )}
 
+      {strategyId === "daily-reference-line" && (
+        <>
+          <div className="rounded-md border border-[var(--color-warn)]/30 bg-[var(--color-warn)]/5 p-2 text-xs text-[var(--color-text-muted)]">
+            只適合日內週期（5 分鐘～4 小時）；日線以上每根 K 棒橫跨整天，基準時刻通常不會落在任何一根 K 棒的時間範圍內，不會產生訊號。
+          </div>
+          <Field label="基準時間 - 小時" hint="台北時間（UTC+8），24 小時制">
+            <TextInput type="number" min={0} max={23} value={num(params, "anchorHour")} onChange={(e) => set("anchorHour", Number(e.target.value))} />
+          </Field>
+          <Field label="基準時間 - 分鐘">
+            <TextInput type="number" min={0} max={59} value={num(params, "anchorMinute")} onChange={(e) => set("anchorMinute", Number(e.target.value))} />
+          </Field>
+          <Field label="訊號冷卻根數" hint="兩次訊號之間至少間隔幾根 K 棒，避免價格貼著基準線來回時連續觸發">
+            <TextInput type="number" min={0} max={500} value={num(params, "cooldownBars")} onChange={(e) => set("cooldownBars", Number(e.target.value))} />
+          </Field>
+        </>
+      )}
+
       {errors.length > 0 && (
         <div className="rounded-md border border-[var(--color-down)]/40 bg-[var(--color-down-soft)]/40 p-2 text-xs text-[var(--color-down)]">
           <ul className="list-disc pl-4">
