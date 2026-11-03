@@ -12,6 +12,9 @@ function num(value: string | undefined, fallback: number): number {
 export const env = {
   dataProvider: (process.env.DATA_PROVIDER ?? "binance") as "binance" | "demo",
   binanceBaseUrl: process.env.BINANCE_BASE_URL ?? "https://api.binance.com",
+  /** 幣安合約（期貨）公開資料 API，僅用於讀取「大戶多空持倉比」等公開統計，不涉及下單 */
+  binanceFuturesBaseUrl: process.env.BINANCE_FUTURES_BASE_URL ?? "https://fapi.binance.com",
+  cacheTtlLongShortRatioSeconds: num(process.env.CACHE_TTL_LONG_SHORT_RATIO_SECONDS, 300),
   fxProvider: (process.env.FX_PROVIDER ?? "fixed") as "fixed" | "external",
   fxUsdtTwdFallback: num(process.env.FX_USDT_TWD_FALLBACK, 32.5),
   databaseFile: process.env.DATABASE_FILE ?? "./data/app.db",

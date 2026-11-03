@@ -5,6 +5,8 @@ import type {
   Candle,
   DataProvider,
   KlinesQuery,
+  LongShortRatioPoint,
+  LongShortRatioQuery,
   ProviderResult,
   Ticker24h,
 } from "@/lib/market/types";
@@ -21,6 +23,14 @@ interface Binance24hrTicker {
   quoteVolume: string;
   highPrice: string;
   lowPrice: string;
+}
+
+interface BinanceTopLongShortAccountRatio {
+  symbol: string;
+  longShortRatio: string;
+  longAccount: string;
+  shortAccount: string;
+  timestamp: number;
 }
 
 function toCandle(row: BinanceKline, nowMs: number): Candle {
@@ -113,6 +123,44 @@ export class BinanceProvider implements DataProvider {
         return this.unavailable<Candle[]>(`Binance 現貨市場目前查無交易對 ${query.symbol}`);
       }
       return this.unavailableFromError<Candle[]>(query.symbol, err);
+    }
+  }
+
+  async getTopTraderLongShortRatio(
+    query: LongShortRatioQuery,
+  ): Promise<ProviderResult<LongShortRatioPoint[]>> {
+    if (!isSupportedSymbol(query.symbol)) {
+      return this.unavailable<LongShortRatioPoint[]>(`不支援的交易對：${query.symbol}`);
+    }
+    const params = new URLSearchParams({
+      symbol: query.symbol,
+      period: query.period,
+      limit: String(Math.min(query.limit ?? 30, 500)),
+    });
+    try {
+      const res = await fetchWithRetry(
+        `${env.binanceFuturesBaseUrl}/futures/data/topLongShortAccountRatio?${params.toString()}`,
+      );
+      const raw = (await res.json()) as BinanceTopLongShortAccountRatio[];
+      const points = raw.map((row) => ({
+        time: row.timestamp,
+        longAccountPct: Number(row.longAccount) * 100,
+        shortAccountPct: Number(row.shortAccount) * 100,
+        longShortRatio: Number(row.longShortRatio),
+      }));
+      return {
+        source: "binance",
+        freshness: "live",
+        fetchedAt: Date.now(),
+        data: points,
+      };
+    } catch (err) {
+      if (err instanceof UpstreamFetchError && err.status === 400) {
+        return this.unavailable<LongShortRatioPoint[]>(
+          `幣安合約（期貨）市場目前查無交易對 ${query.symbol}，無法提供大戶多空持倉比`,
+        );
+      }
+      return this.unavailableFromError<LongShortRatioPoint[]>(query.symbol, err);
     }
   }
 

@@ -2,7 +2,15 @@ import { env } from "@/lib/env";
 import { cached } from "@/lib/market/cache";
 import { BinanceProvider } from "@/lib/market/providers/binanceProvider";
 import { DemoProvider } from "@/lib/market/providers/demoProvider";
-import type { Candle, DataProvider, KlinesQuery, ProviderResult, Ticker24h } from "@/lib/market/types";
+import type {
+  Candle,
+  DataProvider,
+  KlinesQuery,
+  LongShortRatioPoint,
+  LongShortRatioQuery,
+  ProviderResult,
+  Ticker24h,
+} from "@/lib/market/types";
 
 // 資料供應層抽象化：未來新增 CoinGecko / CoinMarketCap 等來源，
 // 只需實作 DataProvider 介面並在此註冊，其餘程式碼不需更動。
@@ -26,5 +34,16 @@ export async function getKlinesCached(query: KlinesQuery): Promise<ProviderResul
   const provider = getActiveProvider();
   const key = `klines:${provider.id}:${query.symbol}:${query.interval}:${query.startTime ?? ""}:${query.endTime ?? ""}:${query.limit ?? ""}`;
   const { value } = await cached(key, env.cacheTtlKlinesSeconds, () => provider.getKlines(query));
+  return value;
+}
+
+export async function getTopTraderLongShortRatioCached(
+  query: LongShortRatioQuery,
+): Promise<ProviderResult<LongShortRatioPoint[]>> {
+  const provider = getActiveProvider();
+  const key = `long-short-ratio:${provider.id}:${query.symbol}:${query.period}:${query.limit ?? ""}`;
+  const { value } = await cached(key, env.cacheTtlLongShortRatioSeconds, () =>
+    provider.getTopTraderLongShortRatio(query),
+  );
   return value;
 }

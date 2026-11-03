@@ -45,8 +45,36 @@ export interface KlinesQuery {
   limit?: number;
 }
 
+/** 幣安合約（期貨）公開統計「大戶帳戶多空比」週期，與現貨週期不完全相同，僅取兩邊皆支援的子集 */
+export type LongShortRatioPeriod = "5m" | "15m" | "1h" | "4h" | "1d";
+
+export interface LongShortRatioQuery {
+  symbol: string;
+  period: LongShortRatioPeriod;
+  limit?: number;
+}
+
+export interface LongShortRatioPoint {
+  /** epoch ms（UTC） */
+  time: number;
+  /** 大戶多倉帳戶占比（0~100） */
+  longAccountPct: number;
+  /** 大戶空倉帳戶占比（0~100） */
+  shortAccountPct: number;
+  /** 多空比 = 多倉占比 / 空倉占比 */
+  longShortRatio: number;
+}
+
 export interface DataProvider {
   readonly id: "binance" | "demo";
   getTicker24h(symbol: string): Promise<ProviderResult<Ticker24h>>;
   getKlines(query: KlinesQuery): Promise<ProviderResult<Candle[]>>;
+  /**
+   * 大戶多空持倉比：資料來自幣安「合約（期貨）」市場的公開統計 API，
+   * 與驅動本站其餘回測/策略的「現貨」市場是不同的市場，純粹作為讀取顯示的
+   * 情緒參考指標，不代表、也不會讓本站具備合約下單或開槓桿的能力。
+   */
+  getTopTraderLongShortRatio(
+    query: LongShortRatioQuery,
+  ): Promise<ProviderResult<LongShortRatioPoint[]>>;
 }

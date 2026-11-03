@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiDelete, apiGet, apiPatch, apiPost, apiPut } from "./api";
 import type { SymbolMeta, Interval } from "@/lib/market/symbols";
-import type { Candle, ProviderResult, Ticker24h } from "@/lib/market/types";
+import type { Candle, LongShortRatioPoint, ProviderResult, Ticker24h } from "@/lib/market/types";
 import type { FxRate } from "@/lib/market/fx";
 import type { StrategyId } from "@/lib/strategies/registry";
 import type {
@@ -79,6 +79,17 @@ export function useKlines(
         `/api/market/klines?symbol=${symbol}&interval=${interval}&${query}`,
       ),
     refetchInterval: 60_000,
+  });
+}
+
+export function useLongShortRatio(symbol: string, period: Interval, limit = 30) {
+  return useQuery({
+    queryKey: ["long-short-ratio", symbol, period, limit],
+    queryFn: () =>
+      apiGet<ProviderResult<LongShortRatioPoint[]>>(
+        `/api/market/long-short-ratio?symbol=${symbol}&period=${period}&limit=${limit}`,
+      ),
+    refetchInterval: 5 * 60_000,
   });
 }
 

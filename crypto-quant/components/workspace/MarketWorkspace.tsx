@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useKlines, useSymbols } from "@/lib/client/hooks";
+import { useKlines, useLongShortRatio, useSymbols } from "@/lib/client/hooks";
 import { CandlestickChart } from "@/components/charts/CandlestickChart";
 import { RsiPanel } from "@/components/charts/RsiPanel";
 import { MacdPanel } from "@/components/charts/MacdPanel";
@@ -272,6 +272,15 @@ export function MarketWorkspace({
         : [],
     [candles, indicators],
   );
+
+  const { data: lsrData } = useLongShortRatio(symbol, interval, 30);
+  const lsrPoints = lsrData?.data ?? [];
+  const latestLsr = lsrPoints[lsrPoints.length - 1];
+  const earliestLsr = lsrPoints[0];
+  const lsrTrendPct =
+    latestLsr && earliestLsr
+      ? latestLsr.longAccountPct - earliestLsr.longAccountPct
+      : null;
 
   const recentSignals = [...signals].reverse().slice(0, compact ? 4 : 15);
 
@@ -656,6 +665,60 @@ export function MarketWorkspace({
                   ))}
                 </ul>
               </>
+            )}
+          </Card>
+        )}
+
+        {!compact && (
+          <Card className="h-fit">
+            <CardHeader>
+              <CardTitle>大戶多空持倉比</CardTitle>
+              {lsrData && !lsrData.unavailable && (
+                <DataSourceBadge
+                  freshness={lsrData.freshness}
+                  fetchedAt={lsrData.fetchedAt}
+                />
+              )}
+            </CardHeader>
+            <p className="mb-2 text-xs text-[var(--color-text-muted)]">
+              資料來自幣安「合約（期貨）」市場公開統計的大戶帳戶多空比，與驅動本站其餘圖表／回測的「現貨」市場是不同的市場，純粹讀取顯示統計數字，作為市場情緒的歷史參考，不是訊號也不是預測，更不代表本站具備合約下單或開槓桿的功能。
+            </p>
+            {!latestLsr ? (
+              <EmptyState
+                message="目前無法取得大戶多空持倉比"
+                hint={lsrData?.unavailable?.reason ?? "此交易對可能尚無合約市場資料"}
+              />
+            ) : (
+              <div className="flex flex-col gap-2 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="pos">多倉帳戶占比</span>
+                  <span className="font-medium text-[var(--color-text)]">
+                    {latestLsr.longAccountPct.toFixed(1)}%
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="neg">空倉帳戶占比</span>
+                  <span className="font-medium text-[var(--color-text)]">
+                    {latestLsr.shortAccountPct.toFixed(1)}%
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-[var(--color-text-muted)]">
+                  <span>多空比</span>
+                  <span>{latestLsr.longShortRatio.toFixed(2)}</span>
+                </div>
+                {lsrTrendPct !== null && (
+                  <div className="flex items-center justify-between text-[var(--color-text-muted)]">
+                    <span>近期變化</span>
+                    <span className={lsrTrendPct >= 0 ? "pos" : "neg"}>
+                      多倉占比{lsrTrendPct >= 0 ? "上升" : "下降"}{" "}
+                      {Math.abs(lsrTrendPct).toFixed(1)} 個百分點
+                    </span>
+                  </div>
+                )}
+                <p className="text-[11px] text-[var(--color-text-muted)]">
+                  最後更新：{formatDateTime(latestLsr.time)}
+                </p>
+              </div>
             )}
           </Card>
         )}

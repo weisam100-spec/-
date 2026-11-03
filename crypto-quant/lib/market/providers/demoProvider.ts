@@ -3,6 +3,8 @@ import type {
   Candle,
   DataProvider,
   KlinesQuery,
+  LongShortRatioPoint,
+  LongShortRatioQuery,
   ProviderResult,
   Ticker24h,
 } from "@/lib/market/types";
@@ -71,6 +73,33 @@ function generateSeries(symbol: string, interval: Interval, count: number, endTi
   return candles;
 }
 
+function generateLongShortRatioSeries(
+  symbol: string,
+  period: Interval,
+  count: number,
+  endTime: number,
+): LongShortRatioPoint[] {
+  const rand = mulberry32(hashSeed(symbol, `lsr:${period}`));
+  const stepMs = INTERVAL_MS[period];
+  const startTime = endTime - (count - 1) * stepMs;
+  const points: LongShortRatioPoint[] = [];
+  // 大戶多倉占比以 55% 附近隨機漫步，模擬一般情況下略偏多的常見分布，並限制在合理區間內
+  let longPct = 50 + rand() * 10;
+  for (let i = 0; i < count; i++) {
+    const time = startTime + i * stepMs;
+    longPct += (rand() - 0.5) * 4;
+    longPct = Math.min(80, Math.max(20, longPct));
+    const shortPct = 100 - longPct;
+    points.push({
+      time,
+      longAccountPct: longPct,
+      shortAccountPct: shortPct,
+      longShortRatio: longPct / shortPct,
+    });
+  }
+  return points;
+}
+
 export class DemoProvider implements DataProvider {
   readonly id = "demo" as const;
 
@@ -126,6 +155,28 @@ export class DemoProvider implements DataProvider {
       freshness: "demo",
       fetchedAt: Date.now(),
       data: candles,
+    };
+  }
+
+  async getTopTraderLongShortRatio(
+    query: LongShortRatioQuery,
+  ): Promise<ProviderResult<LongShortRatioPoint[]>> {
+    if (!isSupportedSymbol(query.symbol)) {
+      return {
+        source: "demo",
+        freshness: "demo",
+        fetchedAt: Date.now(),
+        unavailable: { reason: `不支援的交易對：${query.symbol}` },
+        data: [],
+      };
+    }
+    const limit = Math.min(query.limit ?? 30, 500);
+    const points = generateLongShortRatioSeries(query.symbol, query.period, limit, Date.now());
+    return {
+      source: "demo",
+      freshness: "demo",
+      fetchedAt: Date.now(),
+      data: points,
     };
   }
 }
