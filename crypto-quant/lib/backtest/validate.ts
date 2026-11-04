@@ -23,6 +23,24 @@ export function validateBacktestConfig(config: BacktestConfig): string[] {
   if (config.trailingStopPct !== null && (config.trailingStopPct <= 0 || config.trailingStopPct >= 100)) {
     errors.push("移動停損比例必須介於 0（不含）至 100（不含）之間");
   }
+  if (config.splitTakeProfit !== null) {
+    if (config.takeProfitPct !== null) {
+      errors.push("不可同時設定單一停利與分批停利（TP1/TP2），請擇一使用");
+    }
+    const { tp1Pct, tp1SizePct, tp2Pct } = config.splitTakeProfit;
+    if (!Number.isFinite(tp1Pct) || tp1Pct <= 0) {
+      errors.push("TP1 停利比例必須大於 0");
+    }
+    if (!Number.isFinite(tp1SizePct) || tp1SizePct <= 0 || tp1SizePct > 100) {
+      errors.push("TP1 出場比例必須介於 0（不含）至 100 之間");
+    }
+    if (!Number.isFinite(tp2Pct) || tp2Pct <= 0) {
+      errors.push("TP2 停利比例必須大於 0");
+    }
+    if (Number.isFinite(tp1Pct) && Number.isFinite(tp2Pct) && tp2Pct <= tp1Pct) {
+      errors.push("TP2 停利比例必須大於 TP1 停利比例");
+    }
+  }
   if (config.maxConcurrentPositions !== 1) {
     errors.push("第一版僅支援現貨多頭單一持倉，最大同時持倉數必須為 1");
   }

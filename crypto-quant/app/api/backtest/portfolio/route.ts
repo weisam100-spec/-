@@ -82,6 +82,7 @@ export const POST = withRateLimit(async (request) => {
         stopLossPct: sharedCost.stopLossPct,
         takeProfitPct: sharedCost.takeProfitPct,
         trailingStopPct: sharedCost.trailingStopPct,
+        splitTakeProfit: null,
         maxConcurrentPositions: 1,
         direction: "long_only",
         startTime,

@@ -10,7 +10,7 @@ type SortKey = "entryTime" | "pnl" | "returnPct" | "holdingMs";
 type FilterKind = "all" | "win" | "loss";
 
 function toCsv(trades: TradeRecord[]): string {
-  const header = ["進場時間", "進場價格", "出場時間", "出場價格", "數量", "交易成本", "損益", "報酬率(%)", "持倉時間(ms)", "進場原因", "出場原因"];
+  const header = ["進場時間", "進場價格", "出場時間", "出場價格", "數量", "交易成本", "損益", "報酬率(%)", "持倉時間(ms)", "進場原因", "出場原因", "分批停利階段"];
   const rows = trades.map((t) => [
     formatDateTime(t.entryTime),
     t.entryPrice.toFixed(6),
@@ -23,6 +23,7 @@ function toCsv(trades: TradeRecord[]): string {
     String(t.holdingMs),
     `"${t.entryReason.replace(/"/g, '""')}"`,
     `"${t.exitReason.replace(/"/g, '""')}"`,
+    t.tpStage ?? "",
   ]);
   return [header.join(","), ...rows.map((r) => r.join(","))].join("\n");
 }
@@ -55,8 +56,15 @@ export function TradesTable({ trades }: { trades: TradeRecord[] }) {
     return <p className="text-sm text-[var(--color-text-muted)]">此次回測沒有任何成交紀錄。</p>;
   }
 
+  const hasSplitTp = trades.some((t) => t.tpStage);
+
   return (
     <div>
+      {hasSplitTp && (
+        <p className="mb-2 text-[11px] text-[var(--color-text-muted)]">
+          此次回測啟用了分批停利（TP1/TP2），同一次進場若分兩批出場，下表會顯示為兩筆紀錄；上方「勝率」「交易筆數」等指標已將同一次進場的分批出場合併計算，不會因此被灌水。
+        </p>
+      )}
       <div className="mb-2 flex flex-wrap items-center gap-2">
         <Select value={filter} onChange={(e) => setFilter(e.target.value as FilterKind)} className="w-28">
           <option value="all">全部交易</option>
@@ -106,7 +114,12 @@ export function TradesTable({ trades }: { trades: TradeRecord[] }) {
                 <td className={`p-2 text-right font-medium ${signClass(t.pnl)}`}>{formatUsdt(t.pnl)}</td>
                 <td className={`p-2 text-right font-medium ${signClass(t.returnPct)}`}>{t.returnPct.toFixed(2)}%</td>
                 <td className="p-2 text-right">{formatDuration(t.holdingMs)}</td>
-                <td className="max-w-[200px] truncate p-2" title={t.exitReason}>
+                <td className="max-w-[240px] truncate p-2" title={t.exitReason}>
+                  {t.tpStage && (
+                    <span className="mr-1 rounded bg-[var(--color-warn)]/15 px-1 py-0.5 text-[10px] font-medium text-[var(--color-warn)]">
+                      {t.tpStage === "tp1" ? "TP1" : "TP2"}
+                    </span>
+                  )}
                   {t.exitReason}
                 </td>
               </tr>

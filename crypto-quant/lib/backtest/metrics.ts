@@ -34,6 +34,56 @@ export interface MetricsWarning {
 
 const RISK_FREE_RATE_ANNUAL = 0;
 
+/**
+ * 將同一次進場（entryTime 相同）的多筆部分出場紀錄（分批停利 TP1 + TP2／後續出場）
+ * 合併成一筆代表「完整進出場」的紀錄，用於勝率、交易筆數等以回合為單位的統計，
+ * 避免單一次進場因分批出場被重複計入多筆「交易」而使統計失真。
+ * 未啟用分批停利時，每次進場本來就只有一筆出場紀錄，合併後結果不變。
+ */
+export function groupTradesIntoRoundTrips(trades: TradeRecord[]): TradeRecord[] {
+  const byEntry = new Map<number, TradeRecord[]>();
+  for (const t of trades) {
+    const arr = byEntry.get(t.entryTime);
+    if (arr) arr.push(t);
+    else byEntry.set(t.entryTime, [t]);
+  }
+  const roundTrips: TradeRecord[] = [];
+  for (const parts of byEntry.values()) {
+    if (parts.length === 1) {
+      roundTrips.push(parts[0]!);
+      continue;
+    }
+    parts.sort((a, b) => a.exitTime - b.exitTime);
+    const first = parts[0]!;
+    const last = parts[parts.length - 1]!;
+    const quantity = parts.reduce((a, p) => a + p.quantity, 0);
+    const entryFee = parts.reduce((a, p) => a + p.entryFee, 0);
+    const exitFee = parts.reduce((a, p) => a + p.exitFee, 0);
+    const pnl = parts.reduce((a, p) => a + p.pnl, 0);
+    const pnlBeforeCost = parts.reduce((a, p) => a + p.pnlBeforeCost, 0);
+    const totalCostBasis = first.entryPrice * quantity + entryFee;
+    roundTrips.push({
+      entryTime: first.entryTime,
+      entryPrice: first.entryPrice,
+      exitTime: last.exitTime,
+      exitPrice: last.exitPrice,
+      quantity,
+      entryFee,
+      exitFee,
+      totalCost: entryFee + exitFee,
+      pnl,
+      pnlBeforeCost,
+      returnPct: totalCostBasis > 0 ? (pnl / totalCostBasis) * 100 : 0,
+      holdingMs: last.exitTime - first.entryTime,
+      entryReason: first.entryReason,
+      exitReason: parts.map((p) => p.exitReason).join("；"),
+      paramsSnapshot: first.paramsSnapshot,
+    });
+  }
+  roundTrips.sort((a, b) => a.entryTime - b.entryTime);
+  return roundTrips;
+}
+
 function barsPerYear(avgBarMs: number): number {
   if (avgBarMs <= 0) return 365;
   const msPerYear = 365 * 24 * 60 * 60 * 1000;
@@ -123,8 +173,11 @@ export function computeMetrics(
 
   const calmarRatio = cagrPct !== null && maxDrawdownPct > 0 ? cagrPct / maxDrawdownPct : null;
 
-  // 交易統計
-  const tradeCount = trades.length;
+  // 交易統計：分批停利（TP1/TP2）時，同一次進場會拆成多筆部分出場紀錄，
+  // 若直接以每筆部分出場紀錄計算勝率會失真（TP1 幾乎必定是小賺，等於每次進場白送一次「獲勝」）。
+  // 因此勝率／交易筆數等以「完整進出場」為單位的指標，先將同一進場時間的多筆部分出場合併回一筆再統計。
+  const roundTrips = groupTradesIntoRoundTrips(trades);
+  const tradeCount = roundTrips.length;
   let winRatePct: number | null = null;
   let profitFactor: number | null = null;
   let avgWin: number | null = null;
@@ -137,8 +190,8 @@ export function computeMetrics(
   if (tradeCount === 0) {
     warnings.push({ code: "no_trades", message: "回測期間內策略未產生任何成交，交易相關績效指標無法計算" });
   } else {
-    const wins = trades.filter((t) => t.pnl > 0);
-    const losses = trades.filter((t) => t.pnl < 0);
+    const wins = roundTrips.filter((t) => t.pnl > 0);
+    const losses = roundTrips.filter((t) => t.pnl < 0);
     winRatePct = (wins.length / tradeCount) * 100;
     const grossProfit = wins.reduce((a, t) => a + t.pnl, 0);
     const grossLoss = Math.abs(losses.reduce((a, t) => a + t.pnl, 0));
@@ -146,11 +199,11 @@ export function computeMetrics(
     avgWin = wins.length > 0 ? grossProfit / wins.length : null;
     avgLoss = losses.length > 0 ? grossLoss / losses.length : null;
     profitLossRatio = avgWin !== null && avgLoss !== null && avgLoss > 0 ? avgWin / avgLoss : null;
-    avgHoldingMs = trades.reduce((a, t) => a + t.holdingMs, 0) / tradeCount;
+    avgHoldingMs = roundTrips.reduce((a, t) => a + t.holdingMs, 0) / tradeCount;
 
     let curWinStreak = 0;
     let curLossStreak = 0;
-    for (const t of trades) {
+    for (const t of roundTrips) {
       if (t.pnl > 0) {
         curWinStreak++;
         curLossStreak = 0;
@@ -280,5 +333,6 @@ export function summarizeTradesForExport(trades: TradeRecord[]) {
     holdingMs: t.holdingMs,
     entryReason: t.entryReason,
     exitReason: t.exitReason,
+    tpStage: t.tpStage,
   }));
 }

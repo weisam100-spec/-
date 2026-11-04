@@ -6,6 +6,12 @@ export const symbolSchema = z.enum([...SUPPORTED_SYMBOL_SET] as [string, ...stri
 export const intervalSchema = z.enum(SUPPORTED_INTERVALS as unknown as [string, ...string[]]);
 export const strategyIdSchema = z.enum(Object.keys(strategyRegistry) as [string, ...string[]]);
 
+export const splitTakeProfitSchema = z.object({
+  tp1Pct: z.number().positive(),
+  tp1SizePct: z.number().positive().max(100),
+  tp2Pct: z.number().positive(),
+});
+
 export const backtestConfigSchema = z.object({
   initialCapitalUsdt: z.number().positive().max(1_000_000_000),
   positionSizePct: z.number().positive().max(100),
@@ -14,6 +20,7 @@ export const backtestConfigSchema = z.object({
   stopLossPct: z.number().positive().max(99).nullable(),
   takeProfitPct: z.number().positive().nullable(),
   trailingStopPct: z.number().positive().max(99).nullable(),
+  splitTakeProfit: splitTakeProfitSchema.nullable().default(null),
   maxConcurrentPositions: z.literal(1),
   direction: z.literal("long_only"),
   startTime: z.number().int().positive(),

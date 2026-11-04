@@ -1,7 +1,9 @@
 "use client";
 
 import { Field, TextInput, Checkbox } from "@/components/ui/Field";
-import type { BacktestConfig } from "@/lib/backtest/types";
+import type { BacktestConfig, SplitTakeProfitConfig } from "@/lib/backtest/types";
+
+const DEFAULT_SPLIT_TP: SplitTakeProfitConfig = { tp1Pct: 3, tp1SizePct: 50, tp2Pct: 8 };
 
 function toDateInputValue(ms: number): string {
   return new Date(ms).toISOString().slice(0, 10);
@@ -52,11 +54,73 @@ export function BacktestConfigForm({
         value={config.stopLossPct}
         onChange={(v) => set("stopLossPct", v)}
       />
-      <OptionalPercentField
-        label="停利比例（%）"
-        value={config.takeProfitPct}
-        onChange={(v) => set("takeProfitPct", v)}
-      />
+
+      {config.splitTakeProfit === null && (
+        <OptionalPercentField
+          label="停利比例（%）"
+          value={config.takeProfitPct}
+          onChange={(v) => set("takeProfitPct", v)}
+        />
+      )}
+
+      <div className="flex flex-col gap-2 rounded-md border border-[var(--color-border)] p-2">
+        <Checkbox
+          label="分批停利（TP1 / TP2）"
+          checked={config.splitTakeProfit !== null}
+          onChange={(e) =>
+            onChange({
+              ...config,
+              splitTakeProfit: e.target.checked ? DEFAULT_SPLIT_TP : null,
+              takeProfitPct: e.target.checked ? null : config.takeProfitPct,
+            })
+          }
+        />
+        {config.splitTakeProfit !== null && (
+          <>
+            <p className="text-[11px] text-[var(--color-text-muted)]">
+              價格先漲到 TP1 時先出一部分部位鎖住獲利，剩餘部位繼續持有到 TP2
+              或觸發停損／移動停損／策略出場訊號才出清。啟用後會停用上方的單一停利比例。
+            </p>
+            <div className="grid grid-cols-3 gap-2">
+              <Field label="TP1 漲幅（%）">
+                <TextInput
+                  type="number"
+                  min={0.1}
+                  step={0.1}
+                  value={config.splitTakeProfit.tp1Pct}
+                  onChange={(e) =>
+                    set("splitTakeProfit", { ...config.splitTakeProfit!, tp1Pct: Number(e.target.value) })
+                  }
+                />
+              </Field>
+              <Field label="TP1 出場比例（%）">
+                <TextInput
+                  type="number"
+                  min={1}
+                  max={100}
+                  step={1}
+                  value={config.splitTakeProfit.tp1SizePct}
+                  onChange={(e) =>
+                    set("splitTakeProfit", { ...config.splitTakeProfit!, tp1SizePct: Number(e.target.value) })
+                  }
+                />
+              </Field>
+              <Field label="TP2 漲幅（%）">
+                <TextInput
+                  type="number"
+                  min={0.1}
+                  step={0.1}
+                  value={config.splitTakeProfit.tp2Pct}
+                  onChange={(e) =>
+                    set("splitTakeProfit", { ...config.splitTakeProfit!, tp2Pct: Number(e.target.value) })
+                  }
+                />
+              </Field>
+            </div>
+          </>
+        )}
+      </div>
+
       <OptionalPercentField
         label="移動停損比例（%）"
         value={config.trailingStopPct}
