@@ -13,6 +13,7 @@ export const SUPPORTED_SYMBOLS: SymbolMeta[] = [
   { symbol: "SOLUSDT", base: "SOL", quote: "USDT", displayName: "索拉納 SOL/USDT" },
   { symbol: "XRPUSDT", base: "XRP", quote: "USDT", displayName: "瑞波幣 XRP/USDT" },
   { symbol: "HYPEUSDT", base: "HYPE", quote: "USDT", displayName: "Hyperliquid HYPE/USDT" },
+  { symbol: "SUIUSDT", base: "SUI", quote: "USDT", displayName: "Sui SUI/USDT" },
 ];
 
 export const SUPPORTED_SYMBOL_SET = new Set(SUPPORTED_SYMBOLS.map((s) => s.symbol));

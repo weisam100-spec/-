@@ -19,7 +19,7 @@ describe("GET /api/symbols", () => {
     const res = await getSymbols(new Request("http://localhost/api/symbols") as never, undefined as never);
     const json = await res.json();
     expect(json.ok).toBe(true);
-    expect(json.data.symbols.length).toBe(6);
+    expect(json.data.symbols.length).toBe(7);
     expect(json.data.intervals.length).toBe(5);
   });
 });

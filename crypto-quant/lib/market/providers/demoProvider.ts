@@ -23,6 +23,7 @@ const BASE_PRICE: Record<string, number> = {
   SOLUSDT: 140,
   XRPUSDT: 0.6,
   HYPEUSDT: 22,
+  SUIUSDT: 3.5,
 };
 
 function mulberry32(seed: number) {
