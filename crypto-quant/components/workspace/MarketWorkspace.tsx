@@ -24,6 +24,7 @@ import {
   computeKeyLevels,
   computeTrendlines,
   computeOrderBlocks,
+  computeFvgZones,
   computeFibonacciRetracement,
   computeLevelReactionStats,
 } from "@/lib/indicators";
@@ -69,7 +70,7 @@ export function MarketWorkspace({
   const { data: symbolsData } = useSymbols();
   const [symbol, setSymbol] = useState(initialSymbol);
   const [interval, setInterval] = useState<Interval>("1h");
-  const [strategyId, setStrategyId] = useState<StrategyId>("ema-trend");
+  const [strategyId, setStrategyId] = useState<StrategyId>("fvg-supply-demand");
   const [showSignals, setShowSignals] = useState(true);
   const [expandedSignal, setExpandedSignal] = useState<number | null>(null);
   const [historyRange, setHistoryRange] = useState<HistoryRange>("count");
@@ -230,6 +231,43 @@ export function MarketWorkspace({
     }
     return lines;
   }, [orderBlocks]);
+
+  const fvgZones = useMemo(() => {
+    if (candles.length === 0) return [];
+    return computeFvgZones(candles);
+  }, [candles]);
+
+  const fvgOverlays = useMemo(() => {
+    const lines: {
+      name: string;
+      color: string;
+      data: { time: number; value: number }[];
+    }[] = [];
+    for (const z of fvgZones) {
+      const color = z.type === "bullish" ? "#16c784" : "#ea3943";
+      const name = `${z.type === "bullish" ? "多頭" : "空頭"} FVG`;
+      // 與訂單塊疊圖同樣原因：只畫上下兩條水平邊界線，不畫左右垂直邊界。
+      lines.push(
+        {
+          name,
+          color,
+          data: [
+            { time: z.startTime, value: z.top },
+            { time: z.endTime, value: z.top },
+          ],
+        },
+        {
+          name,
+          color,
+          data: [
+            { time: z.startTime, value: z.bottom },
+            { time: z.endTime, value: z.bottom },
+          ],
+        },
+      );
+    }
+    return lines;
+  }, [fvgZones]);
 
   const fibonacci = useMemo(() => {
     if (candles.length === 0) return null;
@@ -437,6 +475,7 @@ export function MarketWorkspace({
                         ...overlays,
                         ...trendlineOverlays,
                         ...orderBlockOverlays,
+                        ...fvgOverlays,
                       ]}
                       signals={showSignals ? signals : []}
                       priceLines={priceLines}
@@ -597,15 +636,14 @@ export function MarketWorkspace({
         {!compact && (
           <Card className="h-fit">
             <CardHeader>
-              <CardTitle>訂單塊</CardTitle>
+              <CardTitle>供需區（訂單塊）</CardTitle>
             </CardHeader>
             <p className="mb-2 text-xs text-[var(--color-text-muted)]">
               結構突破當下，帶動突破的那根 K 棒之前最後一根反方向 K
-              棒的高低區間（SMC
-              策略同一套規則），只列出目前仍未被價格回測、也還沒超過有效期的區塊，純屬歷史價格結構標示，不是訊號也不是預測。
+              棒的高低區間（多頭訂單塊＝需求區，空頭訂單塊＝供給區），只列出目前仍未被價格回測、也還沒超過有效期的區塊，純屬歷史價格結構標示，不是訊號也不是預測。
             </p>
             {orderBlocks.length === 0 ? (
-              <EmptyState message="目前沒有偵測到仍然有效的訂單塊" />
+              <EmptyState message="目前沒有偵測到仍然有效的供需區" />
             ) : (
               <ul className="flex flex-col gap-1">
                 {orderBlocks.map((ob, i) => (
@@ -614,7 +652,7 @@ export function MarketWorkspace({
                     className="flex items-center justify-between rounded-md border border-[var(--color-border)] px-2 py-1 text-xs"
                   >
                     <span className={ob.type === "bullish" ? "pos" : "neg"}>
-                      {ob.type === "bullish" ? "多頭" : "空頭"}訂單塊
+                      {ob.type === "bullish" ? "需求區" : "供給區"}
                     </span>
                     <span className="text-[var(--color-text-muted)]">
                       {formatUsdt(ob.low, { decimals: 2 })} ~{" "}
@@ -622,6 +660,37 @@ export function MarketWorkspace({
                     </span>
                     <span className="text-[var(--color-text-muted)]">
                       {ob.isChoch ? "CHoCH" : "BOS"}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+        )}
+
+        {!compact && (
+          <Card className="h-fit">
+            <CardHeader>
+              <CardTitle>價格失衡區（FVG）</CardTitle>
+            </CardHeader>
+            <p className="mb-2 text-xs text-[var(--color-text-muted)]">
+              連續三根 K 棒中，第 1 根與第 3 根之間出現沒有重疊的缺口，代表價格快速移動、來不及雙向成交的區域。只列出目前仍未被價格回補、也還沒超過有效期的缺口，純屬歷史價格結構標示，不是訊號也不是預測。
+            </p>
+            {fvgZones.length === 0 ? (
+              <EmptyState message="目前沒有偵測到仍然有效的價格失衡區" />
+            ) : (
+              <ul className="flex flex-col gap-1">
+                {fvgZones.map((z, i) => (
+                  <li
+                    key={i}
+                    className="flex items-center justify-between rounded-md border border-[var(--color-border)] px-2 py-1 text-xs"
+                  >
+                    <span className={z.type === "bullish" ? "pos" : "neg"}>
+                      {z.type === "bullish" ? "多頭" : "空頭"} FVG
+                    </span>
+                    <span className="text-[var(--color-text-muted)]">
+                      {formatUsdt(z.bottom, { decimals: 2 })} ~{" "}
+                      {formatUsdt(z.top, { decimals: 2 })}
                     </span>
                   </li>
                 ))}

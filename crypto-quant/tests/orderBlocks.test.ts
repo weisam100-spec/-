@@ -1,16 +1,14 @@
 import { describe, it, expect } from "vitest";
-import { detectOrderBlocks } from "@/lib/strategies/orderBlockDetection";
+import { detectOrderBlocks, defaultOrderBlockParams } from "@/lib/strategies/orderBlockDetection";
 import { computeOrderBlocks } from "@/lib/indicators/orderBlocks";
-import { smcStrategy } from "@/lib/strategies/smc";
 import {
   buildSmcScenarioCandles,
   buildNoisyCandles,
   buildSampleCandles,
 } from "./fixtures/sampleCandles";
 
-const ctx = { symbol: "BTCUSDT", interval: "1h" as const };
 const scenarioParams = {
-  ...smcStrategy.defaultParams,
+  ...defaultOrderBlockParams,
   swingLookback: 2,
   minDisplacementMultiple: 1.2,
   orderBlockLookback: 10,
@@ -51,14 +49,6 @@ describe("detectOrderBlocks", () => {
     const shortLived = { ...scenarioParams, maxMitigationBars: 0 };
     const result = detectOrderBlocks(candles, shortLived);
     expect(result.active).toEqual([]);
-  });
-
-  it("SMC 策略的訊號數與 detectOrderBlocks 的 touches 數一致（共用同一套邏輯）", () => {
-    const candles = buildSmcScenarioCandles();
-    const signals = smcStrategy.generateSignals(candles, scenarioParams, ctx);
-    const { touches } = detectOrderBlocks(candles, scenarioParams);
-    expect(signals.length).toBe(touches.length);
-    expect(signals.map((s) => s.time)).toEqual(touches.map((t) => t.time));
   });
 });
 

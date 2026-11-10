@@ -64,10 +64,10 @@ export default function OptimizePage() {
   const { data: symbolsData } = useSymbols();
   const [symbol, setSymbol] = useState("BTCUSDT");
   const [interval, setInterval] = useState<Interval>("1h");
-  const [strategyId, setStrategyId] = useState<StrategyId>("ema-trend");
-  const [params, setParams] = useState<Record<string, unknown>>({ ...strategyRegistry["ema-trend"].defaultParams });
+  const [strategyId, setStrategyId] = useState<StrategyId>("fvg-supply-demand");
+  const [params, setParams] = useState<Record<string, unknown>>({ ...strategyRegistry["fvg-supply-demand"].defaultParams });
   const [sweep, setSweep] = useState<Record<string, SweepState>>(() => {
-    const defaults = strategyRegistry["ema-trend"].defaultParams as Record<string, unknown>;
+    const defaults = strategyRegistry["fvg-supply-demand"].defaultParams as Record<string, unknown>;
     const out: Record<string, SweepState> = {};
     for (const key of numericKeysOf(defaults)) out[key] = defaultSweepFor(key, defaults[key] as number);
     return out;

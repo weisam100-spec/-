@@ -40,8 +40,8 @@ function fromDateInputValue(value: string, endOfDay = false): number {
 export default function PortfolioBacktestPage() {
   const { data: symbolsData } = useSymbols();
   const [legs, setLegs] = useState<LegDraft[]>([
-    newLeg("成分一：BTC EMA 趨勢", "BTCUSDT", "ema-trend"),
-    newLeg("成分二：ETH RSI 均值回歸", "ETHUSDT", "rsi-mean-reversion"),
+    newLeg("成分一：BTC FVG＋供需區", "BTCUSDT", "fvg-supply-demand"),
+    newLeg("成分二：ETH FVG＋供需區", "ETHUSDT", "fvg-supply-demand"),
   ]);
   const [startTime, setStartTime] = useState(Date.now() - 180 * 24 * 60 * 60 * 1000);
   const [endTime, setEndTime] = useState(Date.now());
@@ -58,7 +58,7 @@ export default function PortfolioBacktestPage() {
   const removeLeg = (key: string) => setLegs((prev) => prev.filter((l) => l.key !== key));
   const addLeg = () => {
     if (legs.length >= MAX_LEGS) return;
-    setLegs((prev) => [...prev, newLeg(`成分${prev.length + 1}`, "BTCUSDT", "ema-trend")]);
+    setLegs((prev) => [...prev, newLeg(`成分${prev.length + 1}`, "BTCUSDT", "fvg-supply-demand")]);
   };
 
   const totalCapital = legs.reduce((a, l) => a + (Number.isFinite(l.capitalUsdt) ? l.capitalUsdt : 0), 0);

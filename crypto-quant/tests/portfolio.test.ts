@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { runPortfolioBacktest, MAX_PORTFOLIO_LEGS, type PortfolioLegInput } from "@/lib/backtest/portfolio";
 import { defaultBacktestConfig } from "@/lib/backtest/types";
+import { fvgSupplyDemandDefaultParams } from "@/lib/strategies/fvgSupplyDemand";
 import { buildNoisyCandles } from "./fixtures/sampleCandles";
 
 const candlesA = buildNoisyCandles(300, 1);
@@ -13,8 +14,8 @@ function leg(overrides: Partial<PortfolioLegInput> = {}): PortfolioLegInput {
     label: "成分",
     symbol: "BTCUSDT",
     interval: "1h",
-    strategyId: "ema-trend",
-    strategyParams: { shortPeriod: 10, longPeriod: 30, confirmClose: false, confirmVolume: false, confirmRsi: false },
+    strategyId: "fvg-supply-demand",
+    strategyParams: { ...fvgSupplyDemandDefaultParams },
     candles,
     capitalUsdt,
     backtestConfig: {

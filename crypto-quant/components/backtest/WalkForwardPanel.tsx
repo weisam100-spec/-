@@ -9,20 +9,7 @@ import { formatDate, formatPercent } from "@/lib/format";
 import type { LastBacktestRun } from "@/lib/client/resultStore";
 
 const STRATEGY_GRID_KEY: Record<string, string> = {
-  "ema-trend": "shortPeriod",
-  "rsi-mean-reversion": "oversold",
-  "macd-trend": "fastPeriod",
-  "multi-factor": "scoreThreshold",
-  smc: "swingLookback",
-  smt: "swingLookback",
-  "trend-pullback-ema": "emaShortPeriod",
-  "breakout-retest": "channelPeriod",
-  "range-reversal": "rangePeriod",
-  "bollinger-rsi-reversion": "bollingerPeriod",
-  "rsi-divergence-structure": "swingLookback",
-  "vwap-pullback": "minBiasBars",
-  "false-breakout-reclaim": "lookbackPeriod",
-  "daily-reference-line": "cooldownBars",
+  "fvg-supply-demand": "swingLookback",
 };
 
 function parseValues(input: string): number[] {
@@ -33,7 +20,7 @@ function parseValues(input: string): number[] {
 }
 
 export function WalkForwardPanel({ run }: { run: LastBacktestRun }) {
-  const defaultKey = STRATEGY_GRID_KEY[run.strategyId] ?? "shortPeriod";
+  const defaultKey = STRATEGY_GRID_KEY[run.strategyId] ?? "swingLookback";
   const [gridKey, setGridKey] = useState(defaultKey);
   const [gridValues, setGridValues] = useState("10,15,20,25,30");
   const [folds, setFolds] = useState(4);

@@ -25,7 +25,7 @@ export default function ComparePage() {
     startTime: Date.now() - 180 * 24 * 60 * 60 * 1000,
     endTime: Date.now(),
   });
-  const [selected, setSelected] = useState<StrategyId[]>(["ema-trend", "rsi-mean-reversion", "macd-trend", "multi-factor"]);
+  const [selected, setSelected] = useState<StrategyId[]>(["fvg-supply-demand"]);
   const [sortMode, setSortMode] = useState<SortMode>("riskAdjusted");
 
   const mutation = useRunCompare();

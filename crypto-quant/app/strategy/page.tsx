@@ -25,8 +25,8 @@ export default function StrategyPage() {
   const { data: symbolsData } = useSymbols();
   const [symbol, setSymbol] = useState("BTCUSDT");
   const [interval, setInterval] = useState<Interval>("1h");
-  const [strategyId, setStrategyId] = useState<StrategyId>("ema-trend");
-  const [params, setParams] = useState<Record<string, unknown>>({ ...strategyRegistry["ema-trend"].defaultParams });
+  const [strategyId, setStrategyId] = useState<StrategyId>("fvg-supply-demand");
+  const [params, setParams] = useState<Record<string, unknown>>({ ...strategyRegistry["fvg-supply-demand"].defaultParams });
   const [config, setConfig] = useState<BacktestConfig>({
     ...defaultBacktestConfig,
     startTime: ninetyDaysAgo(),

@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { fvgSupplyDemandDefaultParams } from "@/lib/strategies/fvgSupplyDemand";
 
 process.env.DATA_PROVIDER = "demo";
 
@@ -12,6 +13,25 @@ function makeRequest(body: unknown) {
     headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
   });
+}
+
+function baseConfig(overrides: Record<string, unknown> = {}) {
+  const now = Date.now();
+  return {
+    initialCapitalUsdt: 100000,
+    positionSizePct: 100,
+    feeRatePct: 0.1,
+    slippageRatePct: 0.05,
+    stopLossPct: null,
+    takeProfitPct: null,
+    trailingStopPct: null,
+    splitTakeProfit: null,
+    maxConcurrentPositions: 1,
+    direction: "long_only",
+    startTime: now - 60 * 24 * 60 * 60 * 1000,
+    endTime: now,
+    ...overrides,
+  };
 }
 
 describe("GET /api/symbols", () => {
@@ -29,33 +49,20 @@ describe("GET /api/strategies", () => {
     const res = await getStrategies(new Request("http://localhost/api/strategies") as never, undefined as never);
     const json = await res.json();
     expect(json.ok).toBe(true);
-    expect(json.data.strategies.length).toBe(14);
+    expect(json.data.strategies.length).toBe(1);
+    expect(json.data.strategies[0]!.id).toBe("fvg-supply-demand");
   });
 });
 
 describe("POST /api/backtest/run", () => {
-  it("使用 DEMO 資料來源可成功執行 EMA 策略回測並回傳績效指標", async () => {
-    const now = Date.now();
-    const startTime = now - 60 * 24 * 60 * 60 * 1000;
+  it("使用 DEMO 資料來源可成功執行 FVG＋供需區策略回測並回傳績效指標", async () => {
     const res = await POST(
       makeRequest({
         symbol: "BTCUSDT",
         interval: "1h",
-        strategyId: "ema-trend",
-        strategyParams: { shortPeriod: 20, longPeriod: 50, confirmClose: true, confirmVolume: false, confirmRsi: false },
-        config: {
-          initialCapitalUsdt: 100000,
-          positionSizePct: 100,
-          feeRatePct: 0.1,
-          slippageRatePct: 0.05,
-          stopLossPct: null,
-          takeProfitPct: null,
-          trailingStopPct: null,
-          maxConcurrentPositions: 1,
-          direction: "long_only",
-          startTime,
-          endTime: now,
-        },
+        strategyId: "fvg-supply-demand",
+        strategyParams: fvgSupplyDemandDefaultParams,
+        config: baseConfig(),
       }) as never,
       undefined as never,
     );
@@ -68,26 +75,13 @@ describe("POST /api/backtest/run", () => {
   });
 
   it("不支援的交易對會回傳 400 而非假資料", async () => {
-    const now = Date.now();
     const res = await POST(
       makeRequest({
         symbol: "DOGEUSDT",
         interval: "1h",
-        strategyId: "ema-trend",
-        strategyParams: { shortPeriod: 20, longPeriod: 50, confirmClose: true, confirmVolume: false, confirmRsi: false },
-        config: {
-          initialCapitalUsdt: 100000,
-          positionSizePct: 100,
-          feeRatePct: 0.1,
-          slippageRatePct: 0.05,
-          stopLossPct: null,
-          takeProfitPct: null,
-          trailingStopPct: null,
-          maxConcurrentPositions: 1,
-          direction: "long_only",
-          startTime: now - 1000000,
-          endTime: now,
-        },
+        strategyId: "fvg-supply-demand",
+        strategyParams: fvgSupplyDemandDefaultParams,
+        config: baseConfig({ startTime: Date.now() - 1000000 }),
       }) as never,
       undefined as never,
     );
@@ -96,27 +90,14 @@ describe("POST /api/backtest/run", () => {
     expect(json.ok).toBe(false);
   });
 
-  it("不合法的策略參數（短週期大於長週期）會回傳 400", async () => {
-    const now = Date.now();
+  it("不合法的策略參數（擺動點確認根數超出範圍）會回傳 400", async () => {
     const res = await POST(
       makeRequest({
         symbol: "BTCUSDT",
         interval: "1h",
-        strategyId: "ema-trend",
-        strategyParams: { shortPeriod: 100, longPeriod: 20, confirmClose: true, confirmVolume: false, confirmRsi: false },
-        config: {
-          initialCapitalUsdt: 100000,
-          positionSizePct: 100,
-          feeRatePct: 0.1,
-          slippageRatePct: 0.05,
-          stopLossPct: null,
-          takeProfitPct: null,
-          trailingStopPct: null,
-          maxConcurrentPositions: 1,
-          direction: "long_only",
-          startTime: now - 60 * 24 * 60 * 60 * 1000,
-          endTime: now,
-        },
+        strategyId: "fvg-supply-demand",
+        strategyParams: { ...fvgSupplyDemandDefaultParams, swingLookback: 1 },
+        config: baseConfig(),
       }) as never,
       undefined as never,
     );
@@ -129,86 +110,12 @@ describe("POST /api/backtest/run", () => {
       makeRequest({
         symbol: "BTCUSDT",
         interval: "1h",
-        strategyId: "ema-trend",
-        strategyParams: { shortPeriod: 20, longPeriod: 50, confirmClose: true, confirmVolume: false, confirmRsi: false },
-        config: {
-          initialCapitalUsdt: 100000,
-          positionSizePct: 100,
-          feeRatePct: 0.1,
-          slippageRatePct: 0.05,
-          stopLossPct: null,
-          takeProfitPct: null,
-          trailingStopPct: null,
-          maxConcurrentPositions: 1,
-          direction: "long_only",
-          startTime: now,
-          endTime: now - 1000000,
-        },
+        strategyId: "fvg-supply-demand",
+        strategyParams: fvgSupplyDemandDefaultParams,
+        config: baseConfig({ startTime: now, endTime: now - 1000000 }),
       }) as never,
       undefined as never,
     );
     expect(res.status).toBe(400);
-  });
-
-  it("SMT 策略可成功抓取主要與比較交易對資料並執行回測", async () => {
-    const now = Date.now();
-    const startTime = now - 60 * 24 * 60 * 60 * 1000;
-    const res = await POST(
-      makeRequest({
-        symbol: "BTCUSDT",
-        interval: "1h",
-        strategyId: "smt",
-        strategyParams: { correlatedSymbol: "ETHUSDT", swingLookback: 5, maxMatchBars: 3 },
-        config: {
-          initialCapitalUsdt: 100000,
-          positionSizePct: 100,
-          feeRatePct: 0.1,
-          slippageRatePct: 0.05,
-          stopLossPct: null,
-          takeProfitPct: null,
-          trailingStopPct: null,
-          maxConcurrentPositions: 1,
-          direction: "long_only",
-          startTime,
-          endTime: now,
-        },
-      }) as never,
-      undefined as never,
-    );
-    const json = await res.json();
-    expect(res.status).toBe(200);
-    expect(json.ok).toBe(true);
-    expect(json.data.metrics).toBeDefined();
-  });
-
-  it("SMT 策略比較交易對與主要交易對相同時回傳明確錯誤，而非忽略或假造資料", async () => {
-    const now = Date.now();
-    const startTime = now - 60 * 24 * 60 * 60 * 1000;
-    const res = await POST(
-      makeRequest({
-        symbol: "BTCUSDT",
-        interval: "1h",
-        strategyId: "smt",
-        strategyParams: { correlatedSymbol: "BTCUSDT", swingLookback: 5, maxMatchBars: 3 },
-        config: {
-          initialCapitalUsdt: 100000,
-          positionSizePct: 100,
-          feeRatePct: 0.1,
-          slippageRatePct: 0.05,
-          stopLossPct: null,
-          takeProfitPct: null,
-          trailingStopPct: null,
-          maxConcurrentPositions: 1,
-          direction: "long_only",
-          startTime,
-          endTime: now,
-        },
-      }) as never,
-      undefined as never,
-    );
-    expect(res.status).toBe(502);
-    const json = await res.json();
-    expect(json.ok).toBe(false);
-    expect(json.error.message).toContain("比較交易對");
   });
 });

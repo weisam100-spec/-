@@ -3,7 +3,7 @@ import { runBacktest } from "@/lib/backtest/engine";
 import { computeMetrics } from "@/lib/backtest/metrics";
 import { prepareCandles } from "@/lib/backtest/dataPrep";
 import { defaultBacktestConfig } from "@/lib/backtest/types";
-import { emaTrendStrategy } from "@/lib/strategies/emaTrend";
+import { fvgSupplyDemandStrategy, fvgSupplyDemandDefaultParams } from "@/lib/strategies/fvgSupplyDemand";
 import { buildSampleCandles, buildFlawedCandles } from "./fixtures/sampleCandles";
 import type { Candle } from "@/lib/market/types";
 import type { StrategySignal } from "@/lib/strategies/types";
@@ -42,8 +42,14 @@ describe("prepareCandles", () => {
 describe("runBacktest - 無未來函數", () => {
   it("訊號時間點之後才會成交，進場時間必須晚於訊號時間", () => {
     const candles = buildSampleCandles();
-    const params = { ...emaTrendStrategy.defaultParams, confirmClose: false };
-    const signals = emaTrendStrategy.generateSignals(candles, params, ctx);
+    const params = {
+      ...fvgSupplyDemandDefaultParams,
+      swingLookback: 3,
+      minDisplacementMultiple: 0.8,
+      minGapPct: 0.02,
+      confirmWindowBars: 10,
+    };
+    const signals = fvgSupplyDemandStrategy.generateSignals(candles, params, ctx);
     const result = runBacktest({ candles, signals, config: fullRangeConfig(candles) });
 
     for (const trade of result.trades) {

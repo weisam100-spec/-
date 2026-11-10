@@ -11,18 +11,18 @@ const { createStrategyConfig, listStrategyConfigs, updateStrategyConfig, deleteS
 const { addWatchlistItem, listWatchlist, removeWatchlistItem } = await import("@/lib/storage/watchlistRepo");
 const { getPortfolio, paperBuy, paperSell, resetPortfolio } = await import("@/lib/storage/portfolioRepo");
 const { defaultBacktestConfig } = await import("@/lib/backtest/types");
-const { emaTrendDefaultParams } = await import("@/lib/strategies/emaTrend");
+const { fvgSupplyDemandDefaultParams } = await import("@/lib/strategies/fvgSupplyDemand");
 
 const workspaceId = "test-workspace";
 
 describe("strategyConfigRepo", () => {
   it("可以建立、列出、更新、複製與刪除策略設定", () => {
     const created = createStrategyConfig(workspaceId, {
-      strategyId: "ema-trend",
-      name: "我的 EMA 策略",
+      strategyId: "fvg-supply-demand",
+      name: "我的 FVG 策略",
       symbol: "BTCUSDT",
       interval: "1h",
-      params: emaTrendDefaultParams,
+      params: fvgSupplyDemandDefaultParams,
       backtestConfig: defaultBacktestConfig,
     });
     expect(created.id).toBeTruthy();

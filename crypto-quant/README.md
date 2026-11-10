@@ -139,7 +139,7 @@ DATA_PROVIDER=demo      # 本機展示：使用確定性亂數產生的模擬資
 
 ## 如何新增一個策略
 
-1. 在 `lib/strategies/` 新增檔案（可參考 `emaTrend.ts`），實作 `Strategy<P>` 介面（`lib/strategies/types.ts`）：
+1. 在 `lib/strategies/` 新增檔案（可參考 `fvgSupplyDemand.ts`），實作 `Strategy<P>` 介面（`lib/strategies/types.ts`）：
    - `defaultParams`：預設參數
    - `validateParams(params)`：回傳 `{ valid, errors }`，需檢查參數合理範圍
    - `generateSignals(candles, params, ctx)`：**只能使用 `candles[0..i]` 計算第 i 根的訊號**，回傳 `StrategySignal[]`（訊號類型限定為 `bullish_candidate` / `bearish_candidate` / `watch` / `risk_up`，不可使用「保證獲利」等字眼）

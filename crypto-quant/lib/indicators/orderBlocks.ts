@@ -1,6 +1,5 @@
 import type { Candle } from "@/lib/market/types";
-import { detectOrderBlocks } from "@/lib/strategies/orderBlockDetection";
-import { smcDefaultParams } from "@/lib/strategies/smc";
+import { detectOrderBlocks, defaultOrderBlockParams } from "@/lib/strategies/orderBlockDetection";
 
 export interface DisplayOrderBlock {
   type: "bullish" | "bearish";
@@ -22,7 +21,7 @@ export function computeOrderBlocks(
   maxBlocks = 4,
 ): DisplayOrderBlock[] {
   if (candles.length === 0) return [];
-  const { active } = detectOrderBlocks(candles, smcDefaultParams);
+  const { active } = detectOrderBlocks(candles, defaultOrderBlockParams);
   const lastTime = candles[candles.length - 1]!.openTime;
   return (
     active

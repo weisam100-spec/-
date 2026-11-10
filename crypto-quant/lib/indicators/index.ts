@@ -7,6 +7,7 @@ export * from "./vwap";
 export * from "./supportResistance";
 export * from "./trendlines";
 export * from "./orderBlocks";
+export * from "./fvg";
 export * from "./fibonacci";
 export * from "./levelProbability";
 

@@ -20,6 +20,14 @@ export interface OrderBlockParams {
   maxMitigationBars: number;
 }
 
+/** 訂單塊（供需區）偵測的預設參數，行情頁圖表標示與策略共用 */
+export const defaultOrderBlockParams: OrderBlockParams = {
+  swingLookback: 5,
+  orderBlockLookback: 15,
+  minDisplacementMultiple: 1.5,
+  maxMitigationBars: 50,
+};
+
 export interface OrderBlockTouch {
   /** 回測發生的 K 棒索引 */
   index: number;
