@@ -16,6 +16,8 @@
 # database
 /data/*.db
 /data/*.db-journal
+/data/*.db-shm
+/data/*.db-wal
 
 # misc
 .DS_Store
