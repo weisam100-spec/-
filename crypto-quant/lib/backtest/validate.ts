@@ -41,6 +41,14 @@ export function validateBacktestConfig(config: BacktestConfig): string[] {
       errors.push("TP2 停利比例必須大於 TP1 停利比例");
     }
   }
+  if (config.riskBasedSizing !== null) {
+    if (!Number.isFinite(config.riskBasedSizing.riskPct) || config.riskBasedSizing.riskPct <= 0 || config.riskBasedSizing.riskPct > 100) {
+      errors.push("每筆交易風險比例必須介於 0（不含）至 100 之間");
+    }
+    if (config.stopLossPct === null) {
+      errors.push("啟用固定風險比例部位（1R）時必須先設定停損比例，否則無法反推部位大小");
+    }
+  }
   if (config.maxConcurrentPositions !== 1) {
     errors.push("第一版僅支援現貨多頭單一持倉，最大同時持倉數必須為 1");
   }

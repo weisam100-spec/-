@@ -1,9 +1,10 @@
 "use client";
 
 import { Field, TextInput, Checkbox } from "@/components/ui/Field";
-import type { BacktestConfig, SplitTakeProfitConfig } from "@/lib/backtest/types";
+import type { BacktestConfig, RiskBasedSizingConfig, SplitTakeProfitConfig } from "@/lib/backtest/types";
 
 const DEFAULT_SPLIT_TP: SplitTakeProfitConfig = { tp1Pct: 3, tp1SizePct: 50, tp2Pct: 8 };
+const DEFAULT_RISK_SIZING: RiskBasedSizingConfig = { riskPct: 1 };
 
 function toDateInputValue(ms: number): string {
   return new Date(ms).toISOString().slice(0, 10);
@@ -37,9 +38,11 @@ export function BacktestConfigForm({
       <Field label="初始資金（USDT）">
         <TextInput type="number" min={1} value={config.initialCapitalUsdt} onChange={(e) => set("initialCapitalUsdt", Number(e.target.value))} />
       </Field>
-      <Field label="每次投入比例（%）" hint="佔目前可用資金的比例，最高 100%">
-        <TextInput type="number" min={1} max={100} value={config.positionSizePct} onChange={(e) => set("positionSizePct", Number(e.target.value))} />
-      </Field>
+      {config.riskBasedSizing === null && (
+        <Field label="每次投入比例（%）" hint="佔目前可用資金的比例，最高 100%">
+          <TextInput type="number" min={1} max={100} value={config.positionSizePct} onChange={(e) => set("positionSizePct", Number(e.target.value))} />
+        </Field>
+      )}
       <div className="grid grid-cols-2 gap-2">
         <Field label="手續費率（%）">
           <TextInput type="number" min={0} max={5} step={0.01} value={config.feeRatePct} onChange={(e) => set("feeRatePct", Number(e.target.value))} />
@@ -54,6 +57,40 @@ export function BacktestConfigForm({
         value={config.stopLossPct}
         onChange={(v) => set("stopLossPct", v)}
       />
+
+      <div className="flex flex-col gap-2 rounded-md border border-[var(--color-border)] p-2">
+        <Checkbox
+          label="固定風險比例部位（1R）"
+          checked={config.riskBasedSizing !== null}
+          onChange={(e) =>
+            onChange({
+              ...config,
+              riskBasedSizing: e.target.checked ? DEFAULT_RISK_SIZING : null,
+              stopLossPct: e.target.checked && config.stopLossPct === null ? 5 : config.stopLossPct,
+            })
+          }
+        />
+        {config.riskBasedSizing !== null && (
+          <>
+            <p className="text-[11px] text-[var(--color-text-muted)]">
+              每筆交易最多願意賠掉目前可用資金的這個比例（即「1R」），系統會依照停損比例自動反推該用多少部位，取代上方「每次投入比例」。必須設定停損比例才能使用；現貨不開槓桿，若反推出的部位金額超過可用資金，會被限制在可用資金以內，此時實際風險會低於設定值。
+            </p>
+            <Field label="每筆交易風險比例（%）" hint="佔目前可用資金的比例，常見設定為 0.5% ~ 2%">
+              <TextInput
+                type="number"
+                min={0.1}
+                max={100}
+                step={0.1}
+                value={config.riskBasedSizing.riskPct}
+                onChange={(e) => set("riskBasedSizing", { riskPct: Number(e.target.value) })}
+              />
+            </Field>
+            {config.stopLossPct === null && (
+              <p className="text-xs text-[var(--color-down)]">尚未設定停損比例，請勾選上方「停損比例」並填入數值，否則回測會失敗。</p>
+            )}
+          </>
+        )}
+      </div>
 
       {config.splitTakeProfit === null && (
         <OptionalPercentField

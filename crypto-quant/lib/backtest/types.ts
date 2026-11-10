@@ -18,9 +18,22 @@ export interface SplitTakeProfitConfig {
   tp2Pct: number;
 }
 
+/**
+ * 固定風險比例部位（俗稱「1R」）：啟用後會取代 positionSizePct 固定投入比例的算法，
+ * 改成「這筆交易最多願意賠掉目前可用資金的 riskPct%」反推部位大小——
+ * 部位大小 = (可用資金 × riskPct%) ÷ 停損距離百分比。
+ * 必須同時設定 stopLossPct（否則無法反推部位大小，等於沒有風險上限）。
+ * 現貨、不開槓桿：反推出來的部位金額若超過目前可用資金，會被限制在可用資金以內，
+ * 此時實際承擔的風險會低於 riskPct（而不是用槓桿硬湊出目標風險）。
+ */
+export interface RiskBasedSizingConfig {
+  /** 每筆交易願意承擔的最大虧損，佔目前可用資金的比例（%），必須大於 0 */
+  riskPct: number;
+}
+
 export interface BacktestConfig {
   initialCapitalUsdt: number;
-  /** 單次交易投入資金佔目前可用資金的比例，0~100 */
+  /** 單次交易投入資金佔目前可用資金的比例，0~100；啟用 riskBasedSizing 時此欄位會被忽略 */
   positionSizePct: number;
   feeRatePct: number;
   slippageRatePct: number;
@@ -30,6 +43,8 @@ export interface BacktestConfig {
   trailingStopPct: number | null;
   /** 分批停利（TP1/TP2）設定，null 代表不啟用，沿用 takeProfitPct 單一停利 */
   splitTakeProfit: SplitTakeProfitConfig | null;
+  /** 固定風險比例部位（1R）設定，null 代表不啟用，沿用 positionSizePct 固定投入比例 */
+  riskBasedSizing: RiskBasedSizingConfig | null;
   maxConcurrentPositions: number;
   direction: TradeDirection;
   startTime: number;
@@ -45,6 +60,7 @@ export const defaultBacktestConfig: BacktestConfig = {
   takeProfitPct: null,
   trailingStopPct: null,
   splitTakeProfit: null,
+  riskBasedSizing: null,
   maxConcurrentPositions: 1,
   direction: "long_only",
   startTime: 0,

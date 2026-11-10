@@ -12,6 +12,10 @@ export const splitTakeProfitSchema = z.object({
   tp2Pct: z.number().positive(),
 });
 
+export const riskBasedSizingSchema = z.object({
+  riskPct: z.number().positive().max(100),
+});
+
 export const backtestConfigSchema = z.object({
   initialCapitalUsdt: z.number().positive().max(1_000_000_000),
   positionSizePct: z.number().positive().max(100),
@@ -21,6 +25,7 @@ export const backtestConfigSchema = z.object({
   takeProfitPct: z.number().positive().nullable(),
   trailingStopPct: z.number().positive().max(99).nullable(),
   splitTakeProfit: splitTakeProfitSchema.nullable().default(null),
+  riskBasedSizing: riskBasedSizingSchema.nullable().default(null),
   maxConcurrentPositions: z.literal(1),
   direction: z.literal("long_only"),
   startTime: z.number().int().positive(),

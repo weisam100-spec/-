@@ -194,7 +194,7 @@ export function runBacktest(input: RunBacktestInput): BacktestResult {
 
     // 3. 若進入此根 K 棒前為空手，且前一根訊號為偏多候選，則於本根開盤進場
     if (!wasInPosition && !position && prevSignal && prevSignal.type === "bullish_candidate") {
-      const investAmount = cash * (config.positionSizePct / 100);
+      const investAmount = computeInvestAmount(cash, config);
       if (investAmount > 0) {
         const fillPrice = candle.open * (1 + slippage);
         const fee = investAmount * feeRate;
@@ -257,6 +257,23 @@ export function runBacktest(input: RunBacktestInput): BacktestResult {
     firstTradableTime: filtered[0]?.openTime ?? null,
     lastTime: filtered[filtered.length - 1]?.openTime ?? null,
   };
+}
+
+/**
+ * 計算本次進場要投入的金額。
+ * 預設（riskBasedSizing 為 null）：固定投入目前可用資金的 positionSizePct%。
+ * 啟用固定風險比例部位（1R）時：反推「虧到停損價時，虧損金額剛好等於可用資金的 riskPct%」所需的部位金額；
+ * 現貨不開槓桿，若反推出來的金額超過目前可用資金，會被限制在可用資金以內（此時實際風險低於 riskPct 的設定值）。
+ */
+function computeInvestAmount(cash: number, config: BacktestConfig): number {
+  if (config.riskBasedSizing !== null && config.stopLossPct !== null) {
+    const riskAmount = cash * (config.riskBasedSizing.riskPct / 100);
+    const stopDistanceFraction = config.stopLossPct / 100;
+    if (stopDistanceFraction <= 0) return 0;
+    const rawInvestAmount = riskAmount / stopDistanceFraction;
+    return Math.min(rawInvestAmount, cash);
+  }
+  return cash * (config.positionSizePct / 100);
 }
 
 /**
