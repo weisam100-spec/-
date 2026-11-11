@@ -50,10 +50,10 @@ export function validateBacktestConfig(config: BacktestConfig): string[] {
     }
   }
   if (config.maxConcurrentPositions !== 1) {
-    errors.push("第一版僅支援現貨多頭單一持倉，最大同時持倉數必須為 1");
+    errors.push("第一版僅支援單一持倉，最大同時持倉數必須為 1");
   }
-  if (config.direction !== "long_only") {
-    errors.push("第一版僅開放現貨多頭模擬回測");
+  if (config.direction !== "long_only" && config.direction !== "long_short") {
+    errors.push("交易方向必須是 long_only 或 long_short");
   }
   if (config.startTime && config.endTime && config.startTime >= config.endTime) {
     errors.push("日期起點不得晚於或等於終點");

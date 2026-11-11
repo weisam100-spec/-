@@ -27,7 +27,7 @@ export const backtestConfigSchema = z.object({
   splitTakeProfit: splitTakeProfitSchema.nullable().default(null),
   riskBasedSizing: riskBasedSizingSchema.nullable().default(null),
   maxConcurrentPositions: z.literal(1),
-  direction: z.literal("long_only"),
+  direction: z.enum(["long_only", "long_short"]),
   startTime: z.number().int().positive(),
   endTime: z.number().int().positive(),
 });

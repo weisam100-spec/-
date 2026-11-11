@@ -1,8 +1,14 @@
 import type { Candle } from "@/lib/market/types";
 import type { StrategySignal } from "@/lib/strategies/types";
 
-/** 第一版僅支援現貨多頭模擬，禁止假裝支援尚未實作的槓桿／合約功能 */
-export type TradeDirection = "long_only";
+/**
+ * 交易方向模式：
+ * - "long_only"：僅做多，對應現貨實際能做到的事（預設）。
+ * - "long_short"：額外模擬放空部位的損益。這是「假設用保證金／合約放空，方向判斷正確或錯誤
+ *   各會賺賠多少」的簡化數學模擬，現貨本身無法放空；並未模擬真實保證金交易的借貸成本、
+ *   資金費率（funding rate）與強制平倉機制。無論哪種模式，本站都不會真的執行下單或開槓桿。
+ */
+export type TradeDirection = "long_only" | "long_short";
 
 /**
  * 分批停利（TP1/TP2）設定：啟用後會取代單一停利（takeProfitPct）。
@@ -68,6 +74,8 @@ export const defaultBacktestConfig: BacktestConfig = {
 };
 
 export interface TradeRecord {
+  /** 多單或模擬空單 */
+  side: "long" | "short";
   entryTime: number;
   entryPrice: number;
   exitTime: number;

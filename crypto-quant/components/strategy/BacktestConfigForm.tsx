@@ -1,6 +1,6 @@
 "use client";
 
-import { Field, TextInput, Checkbox } from "@/components/ui/Field";
+import { Field, TextInput, Checkbox, Select } from "@/components/ui/Field";
 import type { BacktestConfig, RiskBasedSizingConfig, SplitTakeProfitConfig } from "@/lib/backtest/types";
 
 const DEFAULT_SPLIT_TP: SplitTakeProfitConfig = { tp1Pct: 3, tp1SizePct: 50, tp2Pct: 8 };
@@ -34,6 +34,23 @@ export function BacktestConfigForm({
           <TextInput type="date" value={toDateInputValue(config.endTime)} onChange={(e) => set("endTime", fromDateInputValue(e.target.value, true))} />
         </Field>
       </div>
+
+      <Field
+        label="交易方向"
+        hint={
+          config.direction === "long_short"
+            ? "模擬放空：假設用保證金／合約放空，偏空候選訊號會真的開空單計算損益。這是簡化的數學模擬，並未模擬借貸成本、資金費率與強制平倉；現貨本身無法放空，本站任何模式都不會真的執行下單。"
+            : "僅做多，對應現貨實際能做到的事"
+        }
+      >
+        <Select
+          value={config.direction}
+          onChange={(e) => set("direction", e.target.value as BacktestConfig["direction"])}
+        >
+          <option value="long_only">僅做多（現貨，預設）</option>
+          <option value="long_short">可做多做空（模擬保證金／合約）</option>
+        </Select>
+      </Field>
 
       <Field label="初始資金（USDT）">
         <TextInput type="number" min={1} value={config.initialCapitalUsdt} onChange={(e) => set("initialCapitalUsdt", Number(e.target.value))} />
@@ -165,7 +182,7 @@ export function BacktestConfigForm({
       />
 
       <div className="rounded-md border border-[var(--color-border)] p-2 text-xs text-[var(--color-text-muted)]">
-        第一版僅支援現貨多頭單一持倉模擬回測（最大同時持倉數固定為 1），尚未支援槓桿、合約、資金費率與強制平倉。
+        第一版僅支援單一持倉模擬回測（最大同時持倉數固定為 1）；「可做多做空」只是簡化的損益模擬，不會真的執行下單，也未模擬真實槓桿／合約交易的借貸成本、資金費率與強制平倉機制。
       </div>
     </div>
   );

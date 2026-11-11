@@ -63,6 +63,7 @@ export function groupTradesIntoRoundTrips(trades: TradeRecord[]): TradeRecord[] 
     const pnlBeforeCost = parts.reduce((a, p) => a + p.pnlBeforeCost, 0);
     const totalCostBasis = first.entryPrice * quantity + entryFee;
     roundTrips.push({
+      side: first.side,
       entryTime: first.entryTime,
       entryPrice: first.entryPrice,
       exitTime: last.exitTime,
@@ -322,6 +323,7 @@ export const METRIC_EXPLANATIONS: Record<keyof PerformanceMetrics, string> = {
 
 export function summarizeTradesForExport(trades: TradeRecord[]) {
   return trades.map((t) => ({
+    side: t.side,
     entryTime: t.entryTime,
     entryPrice: t.entryPrice,
     exitTime: t.exitTime,

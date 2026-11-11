@@ -10,8 +10,9 @@ type SortKey = "entryTime" | "pnl" | "returnPct" | "holdingMs";
 type FilterKind = "all" | "win" | "loss";
 
 function toCsv(trades: TradeRecord[]): string {
-  const header = ["進場時間", "進場價格", "出場時間", "出場價格", "數量", "交易成本", "損益", "報酬率(%)", "持倉時間(ms)", "進場原因", "出場原因", "分批停利階段"];
+  const header = ["方向", "進場時間", "進場價格", "出場時間", "出場價格", "數量", "交易成本", "損益", "報酬率(%)", "持倉時間(ms)", "進場原因", "出場原因", "分批停利階段"];
   const rows = trades.map((t) => [
+    t.side === "long" ? "多" : "空",
     formatDateTime(t.entryTime),
     t.entryPrice.toFixed(6),
     formatDateTime(t.exitTime),
@@ -90,6 +91,7 @@ export function TradesTable({ trades }: { trades: TradeRecord[] }) {
         <table className="w-full min-w-[720px] text-xs">
           <thead className="sticky top-0 bg-[var(--color-surface-raised)] text-[var(--color-text-muted)]">
             <tr>
+              <th className="p-2 text-left">方向</th>
               <th className="p-2 text-left">進場時間</th>
               <th className="p-2 text-right">進場價格</th>
               <th className="p-2 text-left">出場時間</th>
@@ -105,6 +107,9 @@ export function TradesTable({ trades }: { trades: TradeRecord[] }) {
           <tbody>
             {filtered.map((t, i) => (
               <tr key={i} className="border-t border-[var(--color-border)]">
+                <td className="p-2">
+                  <span className={t.side === "long" ? "pos" : "neg"}>{t.side === "long" ? "多" : "空"}</span>
+                </td>
                 <td className="p-2">{formatDateTime(t.entryTime)}</td>
                 <td className="p-2 text-right">{t.entryPrice.toFixed(2)}</td>
                 <td className="p-2">{formatDateTime(t.exitTime)}</td>
