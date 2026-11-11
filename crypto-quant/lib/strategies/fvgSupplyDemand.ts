@@ -1,6 +1,6 @@
 import { detectOrderBlocks, type OrderBlockTouch } from "./orderBlockDetection";
 import { detectFvgZones, type FvgTouch } from "./fvgDetection";
-import type { Strategy, StrategyContext, StrategySignal } from "./types";
+import type { RiskLevels, Strategy, StrategyContext, StrategySignal } from "./types";
 
 /**
  * FVG（價格失衡區）＋供需區雙重確認策略。
@@ -61,6 +61,42 @@ interface TouchEvent {
   fvg?: FvgTouch;
 }
 
+/**
+ * 停損緩衝：避免停損價剛好設在區間邊界，價格稍微觸碰邊界就立刻出場；
+ * 以區間邊界再往外推一個很小的百分比（0.1%），純屬數學上的緩衝，不是任何交易建議。
+ */
+const STOP_BUFFER_PCT = 0.1;
+
+function computeRiskLevels(
+  type: "bullish" | "bearish",
+  entryPrice: number,
+  ob: OrderBlockTouch,
+  fvg: FvgTouch,
+): RiskLevels | undefined {
+  if (type === "bullish") {
+    const zoneBottom = Math.min(ob.low, fvg.bottom);
+    const stopPrice = zoneBottom * (1 - STOP_BUFFER_PCT / 100);
+    const riskPerUnit = entryPrice - stopPrice;
+    if (riskPerUnit <= 0) return undefined;
+    return {
+      stopPrice,
+      riskPerUnit,
+      rr2Price: entryPrice + riskPerUnit * 2,
+      rr3Price: entryPrice + riskPerUnit * 3,
+    };
+  }
+  const zoneTop = Math.max(ob.high, fvg.top);
+  const stopPrice = zoneTop * (1 + STOP_BUFFER_PCT / 100);
+  const riskPerUnit = stopPrice - entryPrice;
+  if (riskPerUnit <= 0) return undefined;
+  return {
+    stopPrice,
+    riskPerUnit,
+    rr2Price: entryPrice - riskPerUnit * 2,
+    rr3Price: entryPrice - riskPerUnit * 3,
+  };
+}
+
 function buildSignal(
   ob: OrderBlockTouch,
   fvg: FvgTouch,
@@ -82,6 +118,7 @@ function buildSignal(
     reason: `${ob.reason}，價格回測${zoneLabel} ${ob.low.toFixed(4)}~${ob.high.toFixed(4)}；同方向價格失衡區（FVG）${fvg.bottom.toFixed(4)}~${fvg.top.toFixed(4)} 亦被回補，兩者相距 ${dist} 根 K 棒內，視為供需區＋FVG 雙重確認`,
     confidence,
     params: { ...params },
+    riskLevels: computeRiskLevels(ob.type, later.price, ob, fvg),
   };
 }
 

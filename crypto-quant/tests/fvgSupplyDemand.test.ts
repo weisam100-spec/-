@@ -152,6 +152,28 @@ describe("fvgSupplyDemandStrategy.generateSignals", () => {
     expect(truncatedSignals).toEqual(fullSignalsWithinCutoff);
   });
 
+  it("每個訊號附帶的停損／1:2／1:3 風險報酬參考價位，數學關係必須成立", () => {
+    const candles = buildNoisyCandles(400, 11);
+    const signals = fvgSupplyDemandStrategy.generateSignals(candles, looseParams, ctx);
+    const withRiskLevels = signals.filter((s) => s.riskLevels);
+    expect(withRiskLevels.length).toBeGreaterThan(0);
+    for (const s of withRiskLevels) {
+      const rl = s.riskLevels!;
+      expect(rl.riskPerUnit).toBeGreaterThan(0);
+      if (s.type === "bullish_candidate") {
+        expect(rl.stopPrice).toBeLessThan(s.price);
+        expect(rl.rr2Price).toBeGreaterThan(s.price);
+        expect(rl.rr3Price).toBeGreaterThan(rl.rr2Price);
+      } else {
+        expect(rl.stopPrice).toBeGreaterThan(s.price);
+        expect(rl.rr2Price).toBeLessThan(s.price);
+        expect(rl.rr3Price).toBeLessThan(rl.rr2Price);
+      }
+      expect(Math.abs(rl.rr2Price - s.price)).toBeCloseTo(rl.riskPerUnit * 2, 6);
+      expect(Math.abs(rl.rr3Price - s.price)).toBeCloseTo(rl.riskPerUnit * 3, 6);
+    }
+  });
+
   it("只有供需區或只有 FVG 單一條件成立時不會觸發訊號（必須雙重確認）", () => {
     // 關閉雙重確認視窗（設為 0 且錯開事件），模擬只有單一條件成立的情況：
     // 透過只擷取資料末端（讓其中一種事件尚未發生）驗證訊號不會提早觸發

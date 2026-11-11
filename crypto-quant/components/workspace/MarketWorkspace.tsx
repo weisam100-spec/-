@@ -832,6 +832,37 @@ export function MarketWorkspace({
                   {expandedSignal === i && (
                     <div className="mt-2 border-t border-[var(--color-border)] pt-2 text-xs text-[var(--color-text-muted)]">
                       <p>{s.reason}</p>
+                      {s.riskLevels && (
+                        <div className="mt-2 rounded-md border border-[var(--color-border)] p-2">
+                          <p className="mb-1 text-[11px] text-[var(--color-text-muted)]">
+                            以下純粹是數學換算（進場價、使此訊號失效的參考停損價、1:2／1:3 風險報酬比停利價），不是「這筆交易值不值得做」的評估或建議，是否進場、停損停利怎麼設都由你自行決定。
+                          </p>
+                          <ul className="space-y-0.5">
+                            <li className="flex justify-between">
+                              <span>進場參考價</span>
+                              <span>{formatUsdt(s.price, { decimals: 2 })}</span>
+                            </li>
+                            <li className="flex justify-between">
+                              <span>停損參考價</span>
+                              <span className="neg">
+                                {formatUsdt(s.riskLevels.stopPrice, { decimals: 2 })}
+                              </span>
+                            </li>
+                            <li className="flex justify-between">
+                              <span>1:2 停利參考價</span>
+                              <span className="pos">
+                                {formatUsdt(s.riskLevels.rr2Price, { decimals: 2 })}
+                              </span>
+                            </li>
+                            <li className="flex justify-between">
+                              <span>1:3 停利參考價</span>
+                              <span className="pos">
+                                {formatUsdt(s.riskLevels.rr3Price, { decimals: 2 })}
+                              </span>
+                            </li>
+                          </ul>
+                        </div>
+                      )}
                       {s.contributions && (
                         <ul className="mt-1 space-y-0.5">
                           {s.contributions.map((c) => (

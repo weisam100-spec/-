@@ -23,6 +23,23 @@ export interface FactorContribution {
   detail: string;
 }
 
+/**
+ * 風險報酬參考數字：依訊號當下的進場價與「使這個設定失效」的價位（通常是跌破/站上
+ * 觸發訊號的關鍵區間）反推停損位置，再以此為一個風險單位（R），算出 1:2、1:3 的參考停利價位。
+ * 純粹是數學換算結果，不是「這筆交易值不值得做」的評估或建議，是否進場、停損停利如何
+ * 設定一律由使用者自行決定。
+ */
+export interface RiskLevels {
+  /** 建議停損價位：使此訊號所依據的設定失效的價位 */
+  stopPrice: number;
+  /** 風險（進場價與停損價的距離），即「1R」 */
+  riskPerUnit: number;
+  /** 風險報酬比 1:2 的參考停利價位 */
+  rr2Price: number;
+  /** 風險報酬比 1:3 的參考停利價位 */
+  rr3Price: number;
+}
+
 export interface StrategySignal {
   /** 觸發訊號的 K 棒開盤時間（epoch ms）；實際成交最早在下一根 K 棒 */
   time: number;
@@ -36,6 +53,8 @@ export interface StrategySignal {
   confidence: number;
   params: Record<string, unknown>;
   contributions?: FactorContribution[];
+  /** 停損／1:2／1:3 停利參考價位，並非每個策略都會提供 */
+  riskLevels?: RiskLevels;
 }
 
 export interface ParamValidationResult {
