@@ -14,6 +14,7 @@ import type {
 import type { PerformanceMetrics } from "@/lib/backtest/metrics";
 import type { StrategyConfigRecord } from "@/lib/storage/strategyConfigRepo";
 import type { WatchlistItem } from "@/lib/storage/watchlistRepo";
+import type { SignalTrackRecord } from "@/lib/storage/signalTrackRepo";
 import type { PortfolioSnapshot } from "@/lib/storage/portfolioRepo";
 
 export function useSymbols() {
@@ -303,6 +304,14 @@ export function useDuplicateStrategyConfig() {
         {},
       ),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["strategy-configs"] }),
+  });
+}
+
+export function useSignalTracks() {
+  return useQuery({
+    queryKey: ["signal-track"],
+    queryFn: () => apiGet<{ records: SignalTrackRecord[] }>("/api/signal-track"),
+    refetchInterval: 60_000,
   });
 }
 

@@ -3,14 +3,18 @@ import { fetchStrategyCandles } from "@/lib/market/strategyData";
 import { strategyRegistry, type StrategyId } from "@/lib/strategies/registry";
 import { SIGNAL_TYPE_LABEL } from "@/lib/strategies/types";
 import { listAlertEnabledConfigs, markConfigNotified } from "@/lib/storage/strategyConfigRepo";
+import { recordSignalTrack } from "@/lib/storage/signalTrackRepo";
 import { dispatchToWorkspace } from "@/lib/notifications/dispatch";
 import { formatDateTime, formatUsdt } from "@/lib/format";
 import { INTERVAL_MS, type Interval } from "@/lib/market/symbols";
+import { resolvePendingSignalTracks, type TrackResolveSummary } from "./trackResolver";
 
 export interface AlertCheckSummary {
   checkedConfigs: number;
   notifiedConfigs: number;
   errors: { configId: string; message: string }[];
+  /** 即時訊號追蹤記錄的結果判定摘要（非回測，見 lib/alerts/trackResolver.ts） */
+  trackResolve: TrackResolveSummary;
 }
 
 /**
@@ -20,7 +24,12 @@ export interface AlertCheckSummary {
  */
 export async function checkAlertsOnce(): Promise<AlertCheckSummary> {
   const configs = listAlertEnabledConfigs();
-  const summary: AlertCheckSummary = { checkedConfigs: 0, notifiedConfigs: 0, errors: [] };
+  const summary: AlertCheckSummary = {
+    checkedConfigs: 0,
+    notifiedConfigs: 0,
+    errors: [],
+    trackResolve: { checked: 0, resolved: 0, errors: [] },
+  };
 
   for (const config of configs) {
     summary.checkedConfigs++;
@@ -80,6 +89,29 @@ export async function checkAlertsOnce(): Promise<AlertCheckSummary> {
 
       if (newSignals.length === 0) continue;
 
+      // 將真正「即時」偵測到的新訊號（非回測、非第一次建立基準時回溯到的歷史訊號）記錄下來，
+      // 供「即時訊號追蹤記錄」頁面日後回頭檢視樣本外的實際結果；只有附帶風險報酬參考價位
+      // 的訊號才有辦法判定後續是先碰到停損還是停利，沒有的話就不記錄。
+      for (const s of newSignals) {
+        if (!s.riskLevels) continue;
+        recordSignalTrack({
+          workspaceId: config.workspaceId,
+          strategyConfigId: config.id,
+          strategyId: config.strategyId,
+          configName: config.name,
+          symbol: config.symbol,
+          interval,
+          signalTime: s.time,
+          signalType: s.type,
+          entryPrice: s.price,
+          confidence: s.confidence,
+          reason: s.reason,
+          stopPrice: s.riskLevels.stopPrice,
+          rr2Price: s.riskLevels.rr2Price,
+          rr3Price: s.riskLevels.rr3Price,
+        });
+      }
+
       const lines = newSignals.map(
         (s) => `${formatDateTime(s.time)}｜${SIGNAL_TYPE_LABEL[s.type]}｜${formatUsdt(s.price)}\n原因：${s.reason}`,
       );
@@ -98,6 +130,8 @@ export async function checkAlertsOnce(): Promise<AlertCheckSummary> {
       summary.errors.push({ configId: config.id, message: err instanceof Error ? err.message : "未知錯誤" });
     }
   }
+
+  summary.trackResolve = await resolvePendingSignalTracks();
 
   return summary;
 }

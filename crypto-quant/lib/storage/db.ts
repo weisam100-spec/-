@@ -109,6 +109,31 @@ function migrate(db: Database.Database) {
       created_at INTEGER NOT NULL
     );
     CREATE INDEX IF NOT EXISTS idx_push_subscriptions_workspace ON push_subscriptions(workspace_id);
+
+    CREATE TABLE IF NOT EXISTS signal_track_records (
+      id TEXT PRIMARY KEY,
+      workspace_id TEXT NOT NULL,
+      strategy_config_id TEXT NOT NULL,
+      strategy_id TEXT NOT NULL,
+      config_name TEXT NOT NULL,
+      symbol TEXT NOT NULL,
+      interval TEXT NOT NULL,
+      signal_time INTEGER NOT NULL,
+      signal_type TEXT NOT NULL,
+      entry_price REAL NOT NULL,
+      confidence INTEGER NOT NULL,
+      reason TEXT NOT NULL,
+      stop_price REAL,
+      rr2_price REAL,
+      rr3_price REAL,
+      status TEXT NOT NULL DEFAULT 'pending',
+      resolved_at INTEGER,
+      resolved_price REAL,
+      created_at INTEGER NOT NULL,
+      UNIQUE(strategy_config_id, signal_time)
+    );
+    CREATE INDEX IF NOT EXISTS idx_signal_track_workspace ON signal_track_records(workspace_id);
+    CREATE INDEX IF NOT EXISTS idx_signal_track_status ON signal_track_records(status);
   `);
 
   addColumnIfMissing(db, "strategy_configs", "alert_enabled", "INTEGER NOT NULL DEFAULT 0");

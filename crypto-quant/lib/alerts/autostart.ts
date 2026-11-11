@@ -28,6 +28,11 @@ export function ensureAlertsSchedulerStarted(): void {
           `[alerts] 檢查 ${summary.checkedConfigs} 筆設定，發送 ${summary.notifiedConfigs} 筆通知，${summary.errors.length} 筆錯誤`,
         );
       }
+      if (summary.trackResolve.resolved > 0 || summary.trackResolve.errors.length > 0) {
+        console.log(
+          `[alerts] 訊號追蹤：檢查 ${summary.trackResolve.checked} 筆，判定 ${summary.trackResolve.resolved} 筆結果，${summary.trackResolve.errors.length} 筆錯誤`,
+        );
+      }
     } catch (err) {
       console.error("[alerts] 背景排程執行失敗：", err);
     }

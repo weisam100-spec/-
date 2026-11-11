@@ -34,6 +34,8 @@ export const env = {
   alertsEnabled: bool(process.env.ALERTS_ENABLED, false),
   alertPollIntervalSeconds: num(process.env.ALERT_POLL_INTERVAL_SECONDS, 60),
   alertMaxLookbackBars: num(process.env.ALERT_MAX_LOOKBACK_BARS, 300),
+  /** 即時訊號追蹤記錄：訊號產生後，最多追蹤這麼多根 K 棒的後續價格走勢來判定結果，超過仍未碰到停損／停利則標記為「逾時未解」 */
+  signalTrackMaxBars: num(process.env.SIGNAL_TRACK_MAX_BARS, 200),
   telegramBotToken: process.env.TELEGRAM_BOT_TOKEN ?? "",
   smtpHost: process.env.SMTP_HOST ?? "",
   smtpPort: num(process.env.SMTP_PORT, 587),
