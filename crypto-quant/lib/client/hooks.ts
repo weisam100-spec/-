@@ -14,6 +14,7 @@ import type {
 import type { PerformanceMetrics } from "@/lib/backtest/metrics";
 import type { StrategyConfigRecord } from "@/lib/storage/strategyConfigRepo";
 import type { WatchlistItem } from "@/lib/storage/watchlistRepo";
+import type { PriceAlertRule } from "@/lib/storage/priceAlertRepo";
 import type { SignalTrackRecord } from "@/lib/storage/signalTrackRepo";
 import type { PortfolioSnapshot } from "@/lib/storage/portfolioRepo";
 
@@ -337,6 +338,55 @@ export function useRemoveWatchlist() {
     mutationFn: (id: string) =>
       apiDelete<{ deleted: boolean }>(`/api/watchlist/${id}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["watchlist"] }),
+  });
+}
+
+/**
+ * 觀察清單用：查詢某交易對目前（固定 1 小時週期、策略預設參數）最新一筆候選訊號。
+ * 純粹是把本站既有策略套用到這個交易對的歷史訊號偵測結果，不是推薦名單。
+ */
+export function useWatchlistSignal(symbol: string) {
+  return useQuery({
+    queryKey: ["watchlist-signal", symbol],
+    queryFn: () =>
+      apiGet<{ signal: { time: number; type: string; label: string; price: number } | null; interval: string }>(
+        `/api/watchlist/signal?symbol=${symbol}`,
+      ),
+    staleTime: 60_000,
+    refetchInterval: 5 * 60_000,
+  });
+}
+
+export function usePriceAlerts() {
+  return useQuery({
+    queryKey: ["price-alerts"],
+    queryFn: () => apiGet<{ rules: PriceAlertRule[] }>("/api/price-alerts"),
+  });
+}
+
+export function useCreatePriceAlert() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: { symbol: string; thresholdPct: number; windowMinutes: number; direction: "both" | "up" | "down" }) =>
+      apiPost<{ rule: PriceAlertRule }>("/api/price-alerts", payload),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["price-alerts"] }),
+  });
+}
+
+export function useTogglePriceAlert() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, enabled }: { id: string; enabled: boolean }) =>
+      apiPatch<{ updated: boolean }>(`/api/price-alerts/${id}`, { enabled }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["price-alerts"] }),
+  });
+}
+
+export function useDeletePriceAlert() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiDelete<{ deleted: boolean }>(`/api/price-alerts/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["price-alerts"] }),
   });
 }
 

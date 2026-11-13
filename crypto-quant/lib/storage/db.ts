@@ -134,6 +134,20 @@ function migrate(db: Database.Database) {
     );
     CREATE INDEX IF NOT EXISTS idx_signal_track_workspace ON signal_track_records(workspace_id);
     CREATE INDEX IF NOT EXISTS idx_signal_track_status ON signal_track_records(status);
+
+    CREATE TABLE IF NOT EXISTS price_alert_rules (
+      id TEXT PRIMARY KEY,
+      workspace_id TEXT NOT NULL,
+      symbol TEXT NOT NULL,
+      threshold_pct REAL NOT NULL,
+      window_minutes INTEGER NOT NULL,
+      direction TEXT NOT NULL DEFAULT 'both',
+      enabled INTEGER NOT NULL DEFAULT 1,
+      last_triggered_at INTEGER,
+      created_at INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_price_alert_rules_workspace ON price_alert_rules(workspace_id);
+    CREATE INDEX IF NOT EXISTS idx_price_alert_rules_enabled ON price_alert_rules(enabled);
   `);
 
   addColumnIfMissing(db, "strategy_configs", "alert_enabled", "INTEGER NOT NULL DEFAULT 0");

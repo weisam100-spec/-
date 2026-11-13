@@ -3,20 +3,161 @@
 import { useState } from "react";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Checkbox, Field, TextInput } from "@/components/ui/Field";
+import { Checkbox, Field, Select, TextInput } from "@/components/ui/Field";
 import { RiskBanner } from "@/components/common/RiskBanner";
+import { EmptyState, LoadingState } from "@/components/common/StatusStates";
 import {
+  useCreatePriceAlert,
+  useDeletePriceAlert,
   useNotificationSettings,
+  usePriceAlerts,
   useSendTestNotification,
+  useSymbols,
+  useTogglePriceAlert,
   useUpdateNotificationSettings,
 } from "@/lib/client/hooks";
 import { subscribeBrowserPush, unsubscribeBrowserPush } from "@/lib/client/push";
+import { formatDateTime } from "@/lib/format";
+import type { PriceAlertRule } from "@/lib/storage/priceAlertRepo";
 
 function ChannelStatus({ configured }: { configured: boolean }) {
   return configured ? (
     <span className="text-xs font-medium text-[var(--color-up)]">伺服器已設定</span>
   ) : (
     <span className="text-xs font-medium text-[var(--color-down)]">伺服器尚未設定</span>
+  );
+}
+
+const DIRECTION_LABEL: Record<PriceAlertRule["direction"], string> = {
+  both: "不限方向（漲跌皆通知）",
+  up: "僅急漲時通知",
+  down: "僅急跌時通知",
+};
+
+function PriceAlertCard() {
+  const { data, isLoading } = usePriceAlerts();
+  const { data: symbolsData } = useSymbols();
+  const createMutation = useCreatePriceAlert();
+  const toggleMutation = useTogglePriceAlert();
+  const deleteMutation = useDeletePriceAlert();
+
+  const [symbol, setSymbol] = useState("BTCUSDT");
+  const [thresholdPct, setThresholdPct] = useState(5);
+  const [windowMinutes, setWindowMinutes] = useState(60);
+  const [direction, setDirection] = useState<PriceAlertRule["direction"]>("both");
+  const [formError, setFormError] = useState<string | null>(null);
+
+  const handleCreate = async () => {
+    setFormError(null);
+    try {
+      await createMutation.mutateAsync({ symbol, thresholdPct, windowMinutes, direction });
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : "新增失敗");
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>異常價格波動提醒</CardTitle>
+      </CardHeader>
+      <div className="flex flex-col gap-3">
+        <p className="text-xs text-[var(--color-text-muted)]">
+          設定「在多少分鐘內，漲跌幅達到多少百分比」就透過上方已啟用的管道通知你，純粹是價格歷史數字的計算，不是對後市的預測。同一波動在視窗長度內只會通知一次，避免洗版。
+        </p>
+        <div className="flex flex-wrap items-end gap-2">
+          <Field label="交易對">
+            <Select value={symbol} onChange={(e) => setSymbol(e.target.value)}>
+              {(symbolsData?.symbols ?? []).map((s) => (
+                <option key={s.symbol} value={s.symbol}>
+                  {s.displayName}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="視窗長度（分鐘）" hint="5~1440 之間，5 的倍數">
+            <TextInput
+              type="number"
+              min={5}
+              max={1440}
+              step={5}
+              value={windowMinutes}
+              onChange={(e) => setWindowMinutes(Number(e.target.value))}
+            />
+          </Field>
+          <Field label="漲跌幅門檻（%）">
+            <TextInput
+              type="number"
+              min={0.1}
+              max={50}
+              step={0.1}
+              value={thresholdPct}
+              onChange={(e) => setThresholdPct(Number(e.target.value))}
+            />
+          </Field>
+          <Field label="方向">
+            <Select value={direction} onChange={(e) => setDirection(e.target.value as PriceAlertRule["direction"])}>
+              <option value="both">不限方向</option>
+              <option value="up">僅急漲</option>
+              <option value="down">僅急跌</option>
+            </Select>
+          </Field>
+          <Button onClick={handleCreate} disabled={createMutation.isPending}>
+            新增規則
+          </Button>
+        </div>
+        {formError && <p className="text-xs text-[var(--color-down)]">{formError}</p>}
+
+        {isLoading && <LoadingState />}
+        {!isLoading && (data?.rules.length ?? 0) === 0 && <EmptyState message="目前沒有設定任何異常價格波動規則" />}
+        {!isLoading && (data?.rules.length ?? 0) > 0 && (
+          <div className="scrollbar-thin overflow-x-auto">
+            <table className="w-full min-w-[640px] text-xs">
+              <thead className="text-[var(--color-text-muted)]">
+                <tr>
+                  <th className="p-2 text-left">交易對</th>
+                  <th className="p-2 text-right">視窗</th>
+                  <th className="p-2 text-right">門檻</th>
+                  <th className="p-2 text-left">方向</th>
+                  <th className="p-2 text-left">最近一次觸發</th>
+                  <th className="p-2 text-left">啟用</th>
+                  <th className="p-2"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {data!.rules.map((rule) => (
+                  <tr key={rule.id} className="border-t border-[var(--color-border)]">
+                    <td className="p-2 font-medium text-[var(--color-text)]">{rule.symbol}</td>
+                    <td className="p-2 text-right">{rule.windowMinutes} 分鐘</td>
+                    <td className="p-2 text-right">{rule.thresholdPct}%</td>
+                    <td className="p-2">{DIRECTION_LABEL[rule.direction]}</td>
+                    <td className="p-2 text-[var(--color-text-muted)]">
+                      {rule.lastTriggeredAt ? formatDateTime(rule.lastTriggeredAt) : "—"}
+                    </td>
+                    <td className="p-2">
+                      <Checkbox
+                        label=""
+                        checked={rule.enabled}
+                        onChange={(e) => toggleMutation.mutate({ id: rule.id, enabled: e.target.checked })}
+                      />
+                    </td>
+                    <td className="p-2 text-right">
+                      <Button
+                        variant="ghost"
+                        className="!px-2 !py-1 text-[var(--color-down)]"
+                        onClick={() => deleteMutation.mutate(rule.id)}
+                      >
+                        移除
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </Card>
   );
 }
 
@@ -172,6 +313,8 @@ export default function NotificationsPage() {
           </div>
         </div>
       </Card>
+
+      <PriceAlertCard />
     </div>
   );
 }

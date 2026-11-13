@@ -36,6 +36,18 @@ export function ensureAlertsSchedulerStarted(): void {
     } catch (err) {
       console.error("[alerts] 背景排程執行失敗：", err);
     }
+
+    try {
+      const { checkPriceAlertsOnce } = await import("./priceMoveChecker");
+      const priceSummary = await checkPriceAlertsOnce();
+      if (priceSummary.triggeredRules > 0 || priceSummary.errors.length > 0) {
+        console.log(
+          `[alerts] 異常價格波動：檢查 ${priceSummary.checkedRules} 筆規則，觸發 ${priceSummary.triggeredRules} 筆通知，${priceSummary.errors.length} 筆錯誤`,
+        );
+      }
+    } catch (err) {
+      console.error("[alerts] 異常價格波動背景排程執行失敗：", err);
+    }
   };
 
   console.log(`[alerts] 訊號提醒背景排程已啟動，每 ${env.alertPollIntervalSeconds} 秒檢查一次`);
