@@ -1,6 +1,6 @@
 "use client";
 
-import { Field, TextInput } from "@/components/ui/Field";
+import { Field, TextInput, Checkbox } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
 import { strategyRegistry, type StrategyId } from "@/lib/strategies/registry";
 
@@ -63,6 +63,16 @@ export function StrategyParamsForm({
           <Field label="雙重確認容許根數" hint="供需區回測與 FVG 回補須在彼此這麼多根 K 棒之內發生，才視為雙重確認">
             <TextInput type="number" min={0} max={100} value={num(params, "confirmWindowBars")} onChange={(e) => set("confirmWindowBars", Number(e.target.value))} />
           </Field>
+          <Checkbox
+            label="多時間框架順勢過濾"
+            checked={Boolean(params.useHigherTimeframeFilter)}
+            onChange={(e) => set("useHigherTimeframeFilter", e.target.checked)}
+          />
+          {Boolean(params.useHigherTimeframeFilter) && (
+            <p className="text-[11px] text-[var(--color-text-muted)]">
+              啟用後，只有當高一層時間週期（5分鐘→1小時、15分鐘→4小時、1小時→4小時、4小時→日線）當下的市場結構方向與訊號方向一致時，才會保留該訊號，藉此過濾掉逆著大趨勢的雜訊；代價是訊號會變得更稀少。日線本身已是最高週期，此開關對日線無效果。
+            </p>
+          )}
         </>
       )}
 

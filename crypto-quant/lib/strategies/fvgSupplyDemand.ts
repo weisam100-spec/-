@@ -1,5 +1,7 @@
 import { detectOrderBlocks, type OrderBlockTouch } from "./orderBlockDetection";
 import { detectFvgZones, type FvgTouch } from "./fvgDetection";
+import { HIGHER_TIMEFRAME, computeStructureTrend, structureAsOf } from "./higherTimeframe";
+import { INTERVAL_LABEL, INTERVAL_MS } from "@/lib/market/symbols";
 import type { RiskLevels, Strategy, StrategyContext, StrategySignal } from "./types";
 
 /**
@@ -37,6 +39,12 @@ export interface FvgSupplyDemandParams extends Record<string, unknown> {
   maxMitigationBars: number;
   /** 供需區回測與 FVG 回補須在彼此這麼多根 K 棒之內，才視為雙重確認 */
   confirmWindowBars: number;
+  /**
+   * 多時間框架順勢過濾：啟用後，只有當高一層時間週期（對照表見 @/lib/strategies/higherTimeframe）
+   * 當下的市場結構方向與訊號方向一致時，才會保留該訊號；方向不一致或結構尚未明朗則濾掉。
+   * 主要週期已是日線（無更高週期可用）時，此開關不會有效果。
+   */
+  useHigherTimeframeFilter: boolean;
 }
 
 export const fvgSupplyDemandDefaultParams: FvgSupplyDemandParams = {
@@ -47,6 +55,7 @@ export const fvgSupplyDemandDefaultParams: FvgSupplyDemandParams = {
   minDisplacementMultiple: 1.5,
   maxMitigationBars: 50,
   confirmWindowBars: 5,
+  useHigherTimeframeFilter: false,
 };
 
 type ZoneType = "bullish" | "bearish";
@@ -198,8 +207,13 @@ export const fvgSupplyDemandStrategy: Strategy<FvgSupplyDemandParams> = {
     if (!Number.isFinite(params.confirmWindowBars) || params.confirmWindowBars < 0 || params.confirmWindowBars > 100) {
       errors.push("雙重確認容許根數必須介於 0 至 100 之間");
     }
+    if (typeof params.useHigherTimeframeFilter !== "boolean") {
+      errors.push("多時間框架順勢過濾開關必須是布林值");
+    }
     return { valid: errors.length === 0, errors };
   },
+
+  requiresHigherTimeframe: true,
 
   generateSignals(candles, params, ctx): StrategySignal[] {
     const { touches: obTouches } = detectOrderBlocks(candles, {
@@ -212,6 +226,26 @@ export const fvgSupplyDemandStrategy: Strategy<FvgSupplyDemandParams> = {
       minGapPct: params.minGapPct,
       maxAgeBars: params.maxFvgAgeBars,
     });
-    return generateCombinedSignals(obTouches, fvgTouches, params.confirmWindowBars, ctx, params);
+    const signals = generateCombinedSignals(obTouches, fvgTouches, params.confirmWindowBars, ctx, params);
+
+    if (!params.useHigherTimeframeFilter) return signals;
+    const higherInterval = HIGHER_TIMEFRAME[ctx.interval];
+    if (higherInterval === null || !ctx.higherTimeframeCandles || ctx.higherTimeframeCandles.length === 0) {
+      // 沒有更高週期可用，或呼叫端未提供高週期資料：無法過濾，原樣放行，不假裝有做過濾
+      return signals;
+    }
+    const higherIntervalMs = INTERVAL_MS[higherInterval];
+    const trend = computeStructureTrend(ctx.higherTimeframeCandles, params.swingLookback);
+    return signals
+      .filter((s) => {
+        const higherStructure = structureAsOf(trend, s.time, higherIntervalMs);
+        if (s.type === "bullish_candidate") return higherStructure === "bullish";
+        if (s.type === "bearish_candidate") return higherStructure === "bearish";
+        return true;
+      })
+      .map((s) => ({
+        ...s,
+        reason: `${s.reason}；${INTERVAL_LABEL[higherInterval]}週期結構同方向，符合多時間框架順勢過濾`,
+      }));
   },
 };

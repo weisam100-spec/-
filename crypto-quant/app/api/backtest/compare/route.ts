@@ -4,7 +4,7 @@ import { withRateLimit } from "@/lib/api/withRateLimit";
 import { backtestConfigSchema, intervalSchema, strategyIdSchema, symbolSchema } from "@/lib/api/backtestSchema";
 import { env } from "@/lib/env";
 import { fetchKlinesRange } from "@/lib/market/klinesRange";
-import { fetchCorrelatedCandles } from "@/lib/market/strategyData";
+import { fetchCorrelatedCandles, fetchHigherTimeframeCandles } from "@/lib/market/strategyData";
 import { runStrategyBacktest } from "@/lib/backtest/runPipeline";
 import type { StrategyId } from "@/lib/strategies/registry";
 import type { Interval } from "@/lib/market/symbols";
@@ -75,6 +75,15 @@ export const POST = withRateLimit(async (request) => {
           };
         }
 
+        const higherTimeframe = await fetchHigherTimeframeCandles({
+          strategyId: s.strategyId as StrategyId,
+          symbol,
+          interval: interval as Interval,
+          startTime: config.startTime,
+          endTime: config.endTime,
+          maxBars: env.backtestMaxBars,
+        });
+
         const output = runStrategyBacktest({
           symbol,
           interval: interval as Interval,
@@ -83,6 +92,7 @@ export const POST = withRateLimit(async (request) => {
           strategyParams: s.strategyParams,
           config,
           correlatedCandles: correlated?.candles,
+          higherTimeframeCandles: higherTimeframe?.unavailable ? undefined : higherTimeframe?.candles,
         });
         return {
           strategyId: s.strategyId,

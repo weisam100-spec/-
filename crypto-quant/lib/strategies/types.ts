@@ -72,6 +72,13 @@ export interface StrategyContext {
    */
   correlatedCandles?: Candle[];
   correlatedSymbol?: string;
+  /**
+   * 高一層時間週期的 K 線（例如主要週期為 1 小時時，傳入 4 小時的 K 線），供策略做
+   * 多時間框架順勢過濾使用。對照表見 @/lib/strategies/higherTimeframe 的 HIGHER_TIMEFRAME；
+   * 主要週期已是最高支援週期（日線）時不會有資料，策略應妥善處理缺少此資料的情況
+   * （通常是略過過濾，而不是直接噴錯或永遠不產生訊號）。
+   */
+  higherTimeframeCandles?: Candle[];
 }
 
 export interface Strategy<P extends Record<string, unknown>> {
@@ -81,11 +88,13 @@ export interface Strategy<P extends Record<string, unknown>> {
   defaultParams: P;
   /** 是否需要 ctx.correlatedCandles（例如跨資產背離策略）。呼叫端需依此額外抓取第二組 K 線。 */
   requiresCorrelatedAsset?: boolean;
+  /** 是否需要 ctx.higherTimeframeCandles（多時間框架順勢過濾）。呼叫端需依此額外抓取高一層週期的 K 線。 */
+  requiresHigherTimeframe?: boolean;
   validateParams(params: P): ParamValidationResult;
   /**
    * 產生訊號。實作時只能使用 candles[0..i]（含）的資料計算第 i 根的訊號，
-   * 不得使用未來資料（防止未來函數）；若使用 ctx.correlatedCandles，同樣只能使用
-   * 時間點 <= 當下 K 棒的部分。
+   * 不得使用未來資料（防止未來函數）；若使用 ctx.correlatedCandles 或 ctx.higherTimeframeCandles，
+   * 同樣只能使用時間點 <= 當下 K 棒（或已確定收盤）的部分。
    */
   generateSignals(candles: Candle[], params: P, ctx: StrategyContext): StrategySignal[];
 }

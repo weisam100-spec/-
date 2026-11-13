@@ -42,7 +42,7 @@ export const POST = withRateLimit(async (request) => {
   }
   const { symbol, interval, strategyId, strategyParams, config, xAxis, yAxis, metricKey } = parsed.data;
 
-  const { primary, correlated } = await fetchStrategyCandles({
+  const { primary, correlated, higherTimeframe } = await fetchStrategyCandles({
     strategyId: strategyId as StrategyId,
     symbol,
     interval: interval as Interval,
@@ -71,6 +71,7 @@ export const POST = withRateLimit(async (request) => {
         strategyParams,
         config,
         correlatedCandles: correlated?.candles,
+        higherTimeframeCandles: higherTimeframe?.unavailable ? undefined : higherTimeframe?.candles,
       },
       xAxis as SensitivityAxis,
       yAxis as SensitivityAxis,

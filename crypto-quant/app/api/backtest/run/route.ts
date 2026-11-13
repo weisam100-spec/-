@@ -27,7 +27,7 @@ export const POST = withRateLimit(async (request) => {
     return apiError("日期起點不得晚於或等於終點", 400, "invalid_range");
   }
 
-  const { primary, correlated } = await fetchStrategyCandles({
+  const { primary, correlated, higherTimeframe } = await fetchStrategyCandles({
     strategyId: strategyId as StrategyId,
     symbol,
     interval: interval as Interval,
@@ -57,8 +57,17 @@ export const POST = withRateLimit(async (request) => {
       strategyParams,
       config,
       correlatedCandles: correlated?.candles,
+      higherTimeframeCandles: higherTimeframe?.unavailable ? undefined : higherTimeframe?.candles,
     });
     const elapsedMs = Date.now() - startedAt;
+
+    const extraWarnings = [];
+    if (strategyParams.useHigherTimeframeFilter === true && higherTimeframe?.unavailable) {
+      extraWarnings.push({
+        code: "higher_timeframe_unavailable",
+        message: `多時間框架順勢過濾無法套用：${higherTimeframe.unavailable.reason}，本次訊號未經過順勢過濾`,
+      });
+    }
 
     return apiOk({
       dataSource: primary.source,
@@ -66,7 +75,7 @@ export const POST = withRateLimit(async (request) => {
       elapsedMs,
       signalCount: output.signalCount,
       config: output.result.config,
-      warnings: [...output.result.warnings, ...output.warnings],
+      warnings: [...output.result.warnings, ...output.warnings, ...extraWarnings],
       metrics: output.metrics,
       equityCurve: output.result.equityCurve,
       trades: output.result.trades,

@@ -21,6 +21,10 @@ export function requiresCorrelatedAsset(id: StrategyId): boolean {
   return Boolean(strategyRegistry[id].requiresCorrelatedAsset);
 }
 
+export function requiresHigherTimeframe(id: StrategyId): boolean {
+  return Boolean(strategyRegistry[id].requiresHigherTimeframe);
+}
+
 export function listStrategies() {
   return (Object.keys(strategyRegistry) as StrategyId[]).map((id) => {
     const s = strategyRegistry[id];
@@ -30,6 +34,7 @@ export function listStrategies() {
       description: s.description,
       defaultParams: s.defaultParams,
       requiresCorrelatedAsset: Boolean(s.requiresCorrelatedAsset),
+      requiresHigherTimeframe: Boolean(s.requiresHigherTimeframe),
     };
   });
 }

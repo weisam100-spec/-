@@ -38,7 +38,7 @@ export async function checkAlertsOnce(): Promise<AlertCheckSummary> {
       const endTime = Date.now();
       const startTime = endTime - env.alertMaxLookbackBars * INTERVAL_MS[interval];
 
-      const { primary, correlated } = await fetchStrategyCandles({
+      const { primary, correlated, higherTimeframe } = await fetchStrategyCandles({
         strategyId: config.strategyId,
         symbol: config.symbol,
         interval,
@@ -69,6 +69,7 @@ export async function checkAlertsOnce(): Promise<AlertCheckSummary> {
         interval,
         correlatedCandles: correlated?.candles,
         correlatedSymbol: typeof config.params.correlatedSymbol === "string" ? config.params.correlatedSymbol : undefined,
+        higherTimeframeCandles: higherTimeframe?.unavailable ? undefined : higherTimeframe?.candles,
       });
       if (signals.length === 0) continue;
 

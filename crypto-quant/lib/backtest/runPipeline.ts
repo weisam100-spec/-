@@ -1,6 +1,7 @@
 import type { Interval } from "@/lib/market/symbols";
 import type { Candle } from "@/lib/market/types";
 import { strategyRegistry, type StrategyId } from "@/lib/strategies/registry";
+import { HIGHER_TIMEFRAME } from "@/lib/strategies/higherTimeframe";
 import { prepareCandles } from "./dataPrep";
 import { runBacktest } from "./engine";
 import { computeMetrics, type MetricsWarning, type PerformanceMetrics } from "./metrics";
@@ -15,6 +16,8 @@ export interface PipelineInput {
   config: BacktestConfig;
   /** 僅跨資產比較策略（如 SMT）需要：比較交易對的同週期 K 線 */
   correlatedCandles?: Candle[];
+  /** 僅多時間框架順勢過濾需要：高一層週期的同交易對 K 線 */
+  higherTimeframeCandles?: Candle[];
 }
 
 export interface PipelineOutput {
@@ -37,11 +40,17 @@ export function runStrategyBacktest(input: PipelineInput): PipelineOutput {
     : undefined;
   const correlatedSymbol =
     typeof input.strategyParams.correlatedSymbol === "string" ? input.strategyParams.correlatedSymbol : undefined;
+  const higherInterval = HIGHER_TIMEFRAME[input.interval];
+  const higherTimeframeCandles =
+    input.higherTimeframeCandles && higherInterval !== null
+      ? prepareCandles(input.higherTimeframeCandles, higherInterval).candles
+      : undefined;
   const signals = strategy.generateSignals(candles, input.strategyParams as never, {
     symbol: input.symbol,
     interval: input.interval,
     correlatedCandles,
     correlatedSymbol,
+    higherTimeframeCandles,
   });
 
   const result = runBacktest({ candles, signals, config: input.config });
