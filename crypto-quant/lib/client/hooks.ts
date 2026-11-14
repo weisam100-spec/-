@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiDelete, apiGet, apiPatch, apiPost, apiPut } from "./api";
 import type { SymbolMeta, Interval } from "@/lib/market/symbols";
-import type { Candle, LongShortRatioPoint, ProviderResult, Ticker24h } from "@/lib/market/types";
+import type { Candle, DataFreshness, LongShortRatioPoint, ProviderResult, Ticker24h } from "@/lib/market/types";
 import type { FxRate } from "@/lib/market/fx";
 import type { StrategyId } from "@/lib/strategies/registry";
 import type {
@@ -351,6 +351,37 @@ export function useWatchlistSignal(symbol: string) {
     queryFn: () =>
       apiGet<{ signal: { time: number; type: string; label: string; price: number } | null; interval: string }>(
         `/api/watchlist/signal?symbol=${symbol}`,
+      ),
+    staleTime: 60_000,
+    refetchInterval: 5 * 60_000,
+  });
+}
+
+export interface TrendSignalScanItem {
+  symbol: string;
+  displayName: string;
+  card: {
+    symbol: string;
+    interval: string;
+    signal: { time: number; type: string; label: string; price: number; confidence: number } | null;
+    currentPrice: number;
+    changeSinceSignalPct: number | null;
+    windowHigh: number;
+    windowLow: number;
+    sparkline: { time: number; close: number }[];
+  } | null;
+  unavailable?: string;
+  source?: "binance" | "demo";
+  freshness?: DataFreshness;
+}
+
+/** 「趨勢訊號」牆：對所有支援的交易對批次套用既有策略，取得每個交易對目前的候選訊號狀態 */
+export function useTrendSignalScan(interval: "5m" | "15m") {
+  return useQuery({
+    queryKey: ["trend-signal-scan", interval],
+    queryFn: () =>
+      apiGet<{ interval: string; items: TrendSignalScanItem[]; disclaimer: string }>(
+        `/api/signals/scan?interval=${interval}`,
       ),
     staleTime: 60_000,
     refetchInterval: 5 * 60_000,
